@@ -1,0 +1,274 @@
+{
+  "written_by_user": false,
+  "timestamp": "",
+  "_how_to_use": "Copy to labels.json, fill every value by hand BEFORE any probe runs, set written_by_user to true and timestamp to ISO 8601. Delete this _how_to_use and _vocab block or leave it; probes ignore keys starting with _.",
+  "_vocab": {
+    "name": "generic drug name exactly as printed, lowercase",
+    "dose_amount": "number only, e.g. 500",
+    "dose_unit": [
+      "mg",
+      "mcg",
+      "g",
+      "mL",
+      "units",
+      "tablet",
+      "puff",
+      "drop"
+    ],
+    "frequency": [
+      "once_daily",
+      "twice_daily",
+      "three_times_daily",
+      "four_times_daily",
+      "every_n_hours",
+      "at_bedtime",
+      "as_needed",
+      "weekly"
+    ],
+    "times": "list of HH:MM 24h ONLY if the sheet prints times; [] if it does not (the model must not invent times)",
+    "with_food": [
+      "yes",
+      "no",
+      "unspecified"
+    ],
+    "notes": "free text, NOT scored, shown side by side only",
+    "actor_role": [
+      "sibling1",
+      "sibling2",
+      "sibling3",
+      "parent",
+      "patient"
+    ],
+    "slot": "<med name>_<HH:MM> from the d1 schedule, e.g. metformin_08:00",
+    "action": [
+      "given",
+      "skipped",
+      "unsure"
+    ],
+    "language": [
+      "en",
+      "hi",
+      "pa",
+      "mixed"
+    ],
+    "compartment": [
+      "full",
+      "empty"
+    ]
+  },
+  "sample_schedule_from": "d1",
+  "sheets": {
+    "d1": {
+      "meds": [
+        {
+          "name": "",
+          "dose_amount": 0,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        }
+      ]
+    },
+    "d2": {
+      "meds": [
+        {
+          "name": "",
+          "dose_amount": 0,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        }
+      ]
+    },
+    "d3": {
+      "meds": [
+        {
+          "name": "",
+          "dose_amount": 0,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        }
+      ]
+    }
+  },
+  "voice": {
+    "v01": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v02": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v03": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v04": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v05": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v06": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v07": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v08": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v09": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v10": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v11": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    },
+    "v12": {
+      "sender": "r1",
+      "actor_role": "",
+      "slot": "",
+      "action": "",
+      "language": "",
+      "script": "what you will say, word for word"
+    }
+  },
+  "organiser": {
+    "o1": {
+      "MON_AM": "?",
+      "MON_PM": "?",
+      "TUE_AM": "?",
+      "TUE_PM": "?",
+      "WED_AM": "?",
+      "WED_PM": "?",
+      "THU_AM": "?",
+      "THU_PM": "?",
+      "FRI_AM": "?",
+      "FRI_PM": "?",
+      "SAT_AM": "?",
+      "SAT_PM": "?",
+      "SUN_AM": "?",
+      "SUN_PM": "?"
+    },
+    "o2": {
+      "MON_AM": "?",
+      "MON_PM": "?",
+      "TUE_AM": "?",
+      "TUE_PM": "?",
+      "WED_AM": "?",
+      "WED_PM": "?",
+      "THU_AM": "?",
+      "THU_PM": "?",
+      "FRI_AM": "?",
+      "FRI_PM": "?",
+      "SAT_AM": "?",
+      "SAT_PM": "?",
+      "SUN_AM": "?",
+      "SUN_PM": "?"
+    },
+    "o3": {
+      "MON_AM": "?",
+      "MON_PM": "?",
+      "TUE_AM": "?",
+      "TUE_PM": "?",
+      "WED_AM": "?",
+      "WED_PM": "?",
+      "THU_AM": "?",
+      "THU_PM": "?",
+      "FRI_AM": "?",
+      "FRI_PM": "?",
+      "SAT_AM": "?",
+      "SAT_PM": "?",
+      "SUN_AM": "?",
+      "SUN_PM": "?"
+    },
+    "o4": {
+      "MON_AM": "?",
+      "MON_PM": "?",
+      "TUE_AM": "?",
+      "TUE_PM": "?",
+      "WED_AM": "?",
+      "WED_PM": "?",
+      "THU_AM": "?",
+      "THU_PM": "?",
+      "FRI_AM": "?",
+      "FRI_PM": "?",
+      "SAT_AM": "?",
+      "SAT_PM": "?",
+      "SUN_AM": "?",
+      "SUN_PM": "?"
+    }
+  }
+}
