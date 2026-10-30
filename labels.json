@@ -1,0 +1,434 @@
+{
+  "written_by_user": true,
+  "timestamp": "2026-10-30T23:32:12Z",
+  "_how_to_use": "DRAFT written by the advisor from the setup guide. Copy to labels.json, then check EVERY value against the sheets you printed, the organiser you filled and the scripts you will read. Change anything that differs. Only then set written_by_user to true and add the timestamp.",
+  "_vocab": {
+    "name": "generic drug name exactly as printed, lowercase (e.g. 'insulin glargine')",
+    "dose_amount": "number only, e.g. 500",
+    "dose_unit": [
+      "mg",
+      "mcg",
+      "g",
+      "mL",
+      "units",
+      "tablet",
+      "puff",
+      "drop"
+    ],
+    "frequency": [
+      "once_daily",
+      "twice_daily",
+      "three_times_daily",
+      "four_times_daily",
+      "every_n_hours",
+      "at_bedtime",
+      "as_needed",
+      "weekly"
+    ],
+    "times": "list of HH:MM 24h ONLY if the sheet prints clock times; [] if it does not (the model must not invent times)",
+    "with_food": "yes = with or after food; no = before food or empty stomach; unspecified = sheet says nothing",
+    "with_food_values": [
+      "yes",
+      "no",
+      "unspecified"
+    ],
+    "notes": "free text, NOT scored, shown side by side only",
+    "crossed_out_meds": "a medicine crossed out or marked STOP on the sheet is NOT listed in meds",
+    "actor": "who gave the dose: m1..m5 or patient (took it himself). For skipped or unsure: the member the note names, else the sender",
+    "actor_values": [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
+      "patient"
+    ],
+    "slot": "<name>_<HH:MM> from the d1 schedule, e.g. metformin_08:00",
+    "action": [
+      "given",
+      "skipped",
+      "unsure"
+    ],
+    "language": [
+      "en",
+      "hi",
+      "pa",
+      "mixed"
+    ],
+    "where": [
+      "hands_on",
+      "remote"
+    ],
+    "timezone": "IANA name, e.g. Asia/Kolkata, America/Los_Angeles",
+    "compartment": [
+      "full",
+      "empty"
+    ]
+  },
+  "patient": {
+    "name": "Mohan Lal (fictional), called Nanaji",
+    "timezone": "Asia/Kolkata"
+  },
+  "members": {
+    "m1": {
+      "recipient": "r1",
+      "name": "Arjun",
+      "relationship": "grandson (you, iPhone)",
+      "where": "remote",
+      "timezone": "America/Los_Angeles"
+    },
+    "m2": {
+      "recipient": "r2",
+      "name": "Meena",
+      "relationship": "aunt (real phone: CMF, Google Voice number)",
+      "where": "hands_on",
+      "timezone": "Asia/Kolkata"
+    },
+    "m3": {
+      "recipient": "r3",
+      "name": "Kabir",
+      "relationship": "cousin (real phone: third WhatsApp number)",
+      "where": "remote",
+      "timezone": "Europe/London"
+    },
+    "m4": {
+      "recipient": "sim",
+      "name": "Sunita",
+      "relationship": "neighbour (simulated)",
+      "where": "hands_on",
+      "timezone": "Asia/Kolkata"
+    },
+    "m5": {
+      "recipient": "sim",
+      "name": "Ravi",
+      "relationship": "uncle (simulated)",
+      "where": "remote",
+      "timezone": "Asia/Dubai"
+    }
+  },
+  "sample_schedule_from": "d1",
+  "sheets": {
+    "d1": {
+      "meds": [
+        {
+          "name": "metformin",
+          "dose_amount": 500,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        },
+        {
+          "name": "amlodipine",
+          "dose_amount": 5,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "08:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "aspirin",
+          "dose_amount": 75,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "08:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        },
+        {
+          "name": "atorvastatin",
+          "dose_amount": 20,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "20:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        }
+      ]
+    },
+    "d2": {
+      "meds": [
+        {
+          "name": "telmisartan",
+          "dose_amount": 40,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "yes",
+          "notes": "printed as 1-0-0"
+        },
+        {
+          "name": "glimepiride",
+          "dose_amount": 1,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [],
+          "with_food": "no",
+          "notes": "BD before food"
+        },
+        {
+          "name": "pantoprazole",
+          "dose_amount": 40,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "no",
+          "notes": "OD before breakfast"
+        },
+        {
+          "name": "clopidogrel",
+          "dose_amount": 75,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "calcium carbonate",
+          "dose_amount": 500,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [],
+          "with_food": "yes",
+          "notes": "BD after food"
+        }
+      ]
+    },
+    "d3": {
+      "meds": [
+        {
+          "name": "levothyroxine",
+          "dose_amount": 50,
+          "dose_unit": "mcg",
+          "frequency": "once_daily",
+          "times": [
+            "06:00"
+          ],
+          "with_food": "no",
+          "notes": "empty stomach"
+        },
+        {
+          "name": "metoprolol",
+          "dose_amount": 25,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "insulin glargine",
+          "dose_amount": 10,
+          "dose_unit": "units",
+          "frequency": "at_bedtime",
+          "times": [
+            "22:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "ibuprofen",
+          "dose_amount": 400,
+          "dose_unit": "mg",
+          "frequency": "three_times_daily",
+          "times": [],
+          "with_food": "unspecified",
+          "notes": "printed as TDS; not crossed out in the Word version"
+        }
+      ]
+    }
+  },
+  "voice": {
+    "v01": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "metformin_08:00",
+      "action": "given",
+      "language": "en",
+      "script": "I gave Nanaji his morning metformin with breakfast, done."
+    },
+    "v02": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "amlodipine_08:00",
+      "action": "given",
+      "language": "en",
+      "script": "Morning amlodipine is done, I gave it to him with his tea."
+    },
+    "v03": {
+      "sender": "m1",
+      "actor": "m2",
+      "slot": "aspirin_08:00",
+      "action": "given",
+      "language": "en",
+      "script": "Meena aunty just told me she gave him the morning aspirin."
+    },
+    "v04": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "metformin_20:00",
+      "action": "skipped",
+      "language": "en",
+      "script": "He didn't want the evening metformin, his stomach was upset, so we skipped it."
+    },
+    "v05": {
+      "sender": "m2",
+      "actor": "patient",
+      "slot": "atorvastatin_20:00",
+      "action": "given",
+      "language": "en",
+      "script": "Nanaji took his atorvastatin himself tonight."
+    },
+    "v06": {
+      "sender": "m2",
+      "actor": "m4",
+      "slot": "metformin_20:00",
+      "action": "unsure",
+      "language": "en",
+      "script": "I'm not sure if he had the evening metformin, Sunita was with him tonight."
+    },
+    "v07": {
+      "sender": "m1",
+      "actor": "m4",
+      "slot": "atorvastatin_20:00",
+      "action": "given",
+      "language": "en",
+      "script": "Sunita says she gave him the night atorvastatin."
+    },
+    "v08": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "aspirin_08:00",
+      "action": "skipped",
+      "language": "en",
+      "script": "We skipped the morning aspirin today, he slept through breakfast."
+    },
+    "v09": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "metformin_08:00",
+      "action": "given",
+      "language": "hi",
+      "script": "Maine Nanaji ko subah ki metformin de di."
+    },
+    "v10": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "metformin_20:00",
+      "action": "skipped",
+      "language": "mixed",
+      "script": "Shaam ki metformin miss ho gayi, he fell asleep early."
+    },
+    "v11": {
+      "sender": "m2",
+      "actor": "m2",
+      "slot": "amlodipine_08:00",
+      "action": "given",
+      "language": "pa",
+      "script": "Main Nanaji nu savere di amlodipine de diti."
+    },
+    "v12": {
+      "sender": "m1",
+      "actor": "m4",
+      "slot": "atorvastatin_20:00",
+      "action": "given",
+      "language": "mixed",
+      "script": "Sunita aunty ne raat wali atorvastatin de di, she just called me."
+    }
+  },
+  "organiser": {
+    "o1": {
+      "_photo": "AI-generated image; from above, all full",
+      "_pattern": "all 14 full",
+      "MON_AM": "full",
+      "MON_PM": "full",
+      "TUE_AM": "full",
+      "TUE_PM": "full",
+      "WED_AM": "full",
+      "WED_PM": "full",
+      "THU_AM": "full",
+      "THU_PM": "full",
+      "FRI_AM": "full",
+      "FRI_PM": "full",
+      "SAT_AM": "full",
+      "SAT_PM": "full",
+      "SUN_AM": "full",
+      "SUN_PM": "full"
+    },
+    "o2": {
+      "_photo": "AI-generated image; from above",
+      "_pattern": "MON_AM to WED_AM empty, rest full",
+      "MON_AM": "empty",
+      "MON_PM": "empty",
+      "TUE_AM": "empty",
+      "TUE_PM": "empty",
+      "WED_AM": "empty",
+      "WED_PM": "full",
+      "THU_AM": "full",
+      "THU_PM": "full",
+      "FRI_AM": "full",
+      "FRI_PM": "full",
+      "SAT_AM": "full",
+      "SAT_PM": "full",
+      "SUN_AM": "full",
+      "SUN_PM": "full"
+    },
+    "o3": {
+      "_photo": "AI-generated image; from above",
+      "_pattern": "like o2 but TUE_PM still full (the missed dose)",
+      "MON_AM": "empty",
+      "MON_PM": "empty",
+      "TUE_AM": "empty",
+      "TUE_PM": "full",
+      "WED_AM": "empty",
+      "WED_PM": "full",
+      "THU_AM": "full",
+      "THU_PM": "full",
+      "FRI_AM": "full",
+      "FRI_PM": "full",
+      "SAT_AM": "full",
+      "SAT_PM": "full",
+      "SUN_AM": "full",
+      "SUN_PM": "full"
+    },
+    "o4": {
+      "_photo": "AI-generated image; same organiser as o3, about 30 degrees from the side, dimmer room light",
+      "_pattern": "same as o3",
+      "MON_AM": "empty",
+      "MON_PM": "empty",
+      "TUE_AM": "empty",
+      "TUE_PM": "full",
+      "WED_AM": "empty",
+      "WED_PM": "full",
+      "THU_AM": "full",
+      "THU_PM": "full",
+      "FRI_AM": "full",
+      "FRI_PM": "full",
+      "SAT_AM": "full",
+      "SAT_PM": "full",
+      "SUN_AM": "full",
+      "SUN_PM": "full"
+    }
+  },
+  "_authorship": "Drafted by the advisor on 2026-10-29 21:45 PT from the text of prescriptions/carecircle_fictional_discharge_sheets.docx and a visual check of the four organiser images. The user checks it and then sets written_by_user to true. Written before any model run.",
+  "_input_notes": {
+    "discharge": "P1-screen: d1..d3 are CMF photos of the Word document on a laptop screen, not printed paper. d3 as typed has Ibuprofen NOT crossed out and no handwritten paracetamol; the crossed-out and handwriting tests wait for the paper run.",
+    "organiser": "P3-synthetic: o1..o4 are AI-generated images (photos/*-1..-4.png converted to jpg). A pass is weak evidence; the demo needs real photos."
+  }
+}
