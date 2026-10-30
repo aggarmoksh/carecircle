@@ -1,9 +1,9 @@
 {
   "written_by_user": false,
   "timestamp": "",
-  "_how_to_use": "Copy to labels.json, fill every value by hand BEFORE any probe runs, set written_by_user to true and timestamp to ISO 8601. Delete this _how_to_use and _vocab block or leave it; probes ignore keys starting with _.",
+  "_how_to_use": "Copy to labels.json. Every value must match the real sheets, photos and voice-note scripts BEFORE any probe runs. Then set written_by_user to true and timestamp to ISO 8601. Keys starting with _ are ignored by the probes. Members and patient are context only, not scored.",
   "_vocab": {
-    "name": "generic drug name exactly as printed, lowercase",
+    "name": "generic drug name exactly as printed, lowercase (e.g. 'insulin glargine')",
     "dose_amount": "number only, e.g. 500",
     "dose_unit": [
       "mg",
@@ -25,21 +25,25 @@
       "as_needed",
       "weekly"
     ],
-    "times": "list of HH:MM 24h ONLY if the sheet prints times; [] if it does not (the model must not invent times)",
-    "with_food": [
+    "times": "list of HH:MM 24h ONLY if the sheet prints clock times; [] if it does not (the model must not invent times)",
+    "with_food": "yes = with or after food; no = before food or empty stomach; unspecified = sheet says nothing",
+    "with_food_values": [
       "yes",
       "no",
       "unspecified"
     ],
     "notes": "free text, NOT scored, shown side by side only",
-    "actor_role": [
-      "sibling1",
-      "sibling2",
-      "sibling3",
-      "parent",
+    "crossed_out_meds": "a medicine crossed out or marked STOP on the sheet is NOT listed in meds",
+    "actor": "who gave the dose: m1..m5 or patient (took it himself). For skipped or unsure: the member the note names, else the sender",
+    "actor_values": [
+      "m1",
+      "m2",
+      "m3",
+      "m4",
+      "m5",
       "patient"
     ],
-    "slot": "<med name>_<HH:MM> from the d1 schedule, e.g. metformin_08:00",
+    "slot": "<name>_<HH:MM> from the d1 schedule, e.g. metformin_08:00",
     "action": [
       "given",
       "skipped",
@@ -51,25 +55,68 @@
       "pa",
       "mixed"
     ],
+    "where": [
+      "hands_on",
+      "remote"
+    ],
+    "timezone": "IANA name, e.g. Asia/Kolkata, America/Los_Angeles",
     "compartment": [
       "full",
       "empty"
     ]
+  },
+  "patient": {
+    "name": "?",
+    "timezone": "?"
+  },
+  "members": {
+    "m1": {
+      "recipient": "r1",
+      "name": "?",
+      "relationship": "?",
+      "where": "?",
+      "timezone": "?"
+    },
+    "m2": {
+      "recipient": "r2",
+      "name": "?",
+      "relationship": "?",
+      "where": "?",
+      "timezone": "?"
+    },
+    "m3": {
+      "recipient": "r3",
+      "name": "?",
+      "relationship": "?",
+      "where": "?",
+      "timezone": "?"
+    },
+    "m4": {
+      "recipient": "r4",
+      "name": "?",
+      "relationship": "?",
+      "where": "?",
+      "timezone": "?"
+    },
+    "m5": {
+      "recipient": "r5",
+      "name": "?",
+      "relationship": "?",
+      "where": "?",
+      "timezone": "?"
+    }
   },
   "sample_schedule_from": "d1",
   "sheets": {
     "d1": {
       "meds": [
         {
-          "name": "",
+          "name": "?",
           "dose_amount": 0,
-          "dose_unit": "mg",
-          "frequency": "twice_daily",
-          "times": [
-            "08:00",
-            "20:00"
-          ],
-          "with_food": "yes",
+          "dose_unit": "?",
+          "frequency": "?",
+          "times": [],
+          "with_food": "?",
           "notes": ""
         }
       ]
@@ -77,15 +124,12 @@
     "d2": {
       "meds": [
         {
-          "name": "",
+          "name": "?",
           "dose_amount": 0,
-          "dose_unit": "mg",
-          "frequency": "twice_daily",
-          "times": [
-            "08:00",
-            "20:00"
-          ],
-          "with_food": "yes",
+          "dose_unit": "?",
+          "frequency": "?",
+          "times": [],
+          "with_food": "?",
           "notes": ""
         }
       ]
@@ -93,15 +137,12 @@
     "d3": {
       "meds": [
         {
-          "name": "",
+          "name": "?",
           "dose_amount": 0,
-          "dose_unit": "mg",
-          "frequency": "twice_daily",
-          "times": [
-            "08:00",
-            "20:00"
-          ],
-          "with_food": "yes",
+          "dose_unit": "?",
+          "frequency": "?",
+          "times": [],
+          "with_food": "?",
           "notes": ""
         }
       ]
@@ -109,104 +150,105 @@
   },
   "voice": {
     "v01": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v02": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v03": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v04": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v05": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v06": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v07": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v08": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v09": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v10": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v11": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     },
     "v12": {
-      "sender": "r1",
-      "actor_role": "",
-      "slot": "",
-      "action": "",
-      "language": "",
-      "script": "what you will say, word for word"
+      "sender": "?",
+      "actor": "?",
+      "slot": "?",
+      "action": "?",
+      "language": "?",
+      "script": "?"
     }
   },
   "organiser": {
     "o1": {
+      "_photo": "?",
       "MON_AM": "?",
       "MON_PM": "?",
       "TUE_AM": "?",
@@ -223,6 +265,7 @@
       "SUN_PM": "?"
     },
     "o2": {
+      "_photo": "?",
       "MON_AM": "?",
       "MON_PM": "?",
       "TUE_AM": "?",
@@ -239,6 +282,7 @@
       "SUN_PM": "?"
     },
     "o3": {
+      "_photo": "?",
       "MON_AM": "?",
       "MON_PM": "?",
       "TUE_AM": "?",
@@ -255,6 +299,7 @@
       "SUN_PM": "?"
     },
     "o4": {
+      "_photo": "?",
       "MON_AM": "?",
       "MON_PM": "?",
       "TUE_AM": "?",
