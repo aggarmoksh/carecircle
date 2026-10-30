@@ -18,3 +18,10 @@ raw/
 *.wav
 *.mp4
 .mcp.json
+photos/
+prescriptions/
+videos/
+*.docx
+*.pdf
+*.mkv
+PHASE0_STATUS_FOR_ADVISOR.md
