@@ -41,5 +41,8 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 ## Decisions
 2026-10-29 (updated 18:30 PT): Building CareCircle (Indie track): care coordination for everyone who cares for one person (family, friends and close relatives, nearby or in other countries and time zones) over real WhatsApp 1:1 on three real phones (r1..r3) plus simulated circle members m4 and m5 shown on a live web care board, on Muse Spark 1.3, Muse Voice Transcribe and SAM 3.1; test reports are stored, copied exactly as printed and turned into follow-up tasks, never interpreted; no more idea rounds; the Phase 0 GO/NO-GO rule decides, and any pivot waits for an advisor review of the Phase 0 report.
 
+
+2026-10-30: Spark alone judges organiser compartments; SAM 3.1 runs on every organiser photo and its overlay is stored as evidence only when it returns exactly 14 masks. SAM's role is re-decided after real ice-tray photos. CareCircle is 1:1 with each member and relays updates so the circle shares one stream (no group chats on this channel). Problem statement: Build for Your World.
+
 ## Pitfalls
 - AI-generated organiser images are for wiring only; never present them as real photos in the demo or submission.

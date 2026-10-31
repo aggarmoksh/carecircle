@@ -10,3 +10,11 @@
 - One-run-per-input deviation: SAM was called once as a smoke test on o1 and once more on o1 after my P3 parser code crashed (a code bug, before any scoring). Smoke test raw kept in outputs/raw/smoke_sam_o1.json. The scored run is the later one. Extra cost about $0.005.
 - P3 prompts and P1 prompt were written once, before any results; no prompt changed after results were seen, so there is a single run per probe.
 - P3 "all 14 slots mapped correctly" has no ground-truth box positions in labels.json, so correctness is judged from overlays plus an automatic grid-monotone check, not an exact match.
+
+## STOP: Twilio send rejected twice with the same error (2026-10-31)
+- Request (no credentials): `POST /2010-04-01/Accounts/{AccountSid}/Messages.json`, form body `From=whatsapp:<TWILIO_WHATSAPP_FROM>`, `To=whatsapp:<r1 number>`, `Body=<short free-form text>`, `StatusCallback=<PUBLIC_BASE_URL>/twilio/status`. Made via twilio-python `client.messages.create(from_=, to=, body=, status_callback=)`.
+- Response (both attempts): HTTP 400, "Unable to create record: ContentSid Required".
+- Expected: a free-form text inside the 24 h window to a number that has joined the sandbox and sent "hi". No 63015.
+- Also: the Content API list call returns 401 code 20003 "This feature is not available on a Trial account", so templates cannot be listed via the API on this account.
+- Both rejected attempts were counted by my outbound counter (shows 2); nothing was actually delivered by the app, so the true outbound count is 0. Counter increments before the call by design (stop before exceeding the cap).
+- No third attempt made. Nothing else changed.
