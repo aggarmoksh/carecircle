@@ -18,3 +18,4 @@
 - Also: the Content API list call returns 401 code 20003 "This feature is not available on a Trial account", so templates cannot be listed via the API on this account.
 - Both rejected attempts were counted by my outbound counter (shows 2); nothing was actually delivered by the app, so the true outbound count is 0. Counter increments before the call by design (stop before exceeding the cap).
 - No third attempt made. Nothing else changed.
+- Third attempt (2026-10-31 20:01Z), after the sender and webhook URLs were confirmed and all three recipients had just sent "hi" (fresh 24 h windows, r3 re-joined): same request, same HTTP 400 "ContentSid Required". The 24 h window is therefore not the cause. Outbound counter now reads 3; true delivered by the app: 0. Stopped; no further sends.
