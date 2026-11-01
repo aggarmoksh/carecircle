@@ -1,0 +1,38 @@
+{
+  "_note": "Pre-registered before any Phase 2 runner or prompt. Held-out record questions, new medical questions and the seed addition are verbatim from the Phase 2 brief. 'must_contain_any': every inner list is a group of alternatives; the answer must contain at least one alternative from EVERY group (case-insensitive). 'must_not_contain': none of these substrings may appear (case-insensitive). The check is the machine form of the expected answer; it is not changed after results are seen. Medical questions are scored by exact match against the fixed reply named in 'expected_reply' (see app/outbox.py FIXED_MEDICAL / FIXED_URGENT).",
+  "written_at": "2026-10-31",
+  "seed_addition": {
+    "text": "Lab reports L1 (25 Oct 2026) and L2 (29 Oct 2026) are loaded from tests/lab_labels.json (not from extraction), confirmed by m3. Status per test is computed by code from the printed range. The latest report is L2.",
+    "source": "tests/lab_labels.json",
+    "reports": ["L1", "L2"],
+    "confirmed_by": "m3"
+  },
+  "heldout_record_questions": [
+    {"n": 1, "text": "Who's covering the morning doses?", "expected": "Meena",
+     "must_contain_any": [["meena"]]},
+    {"n": 2, "text": "Has anyone given the amlodipine today?", "expected": "yes, Meena, 08:00",
+     "must_contain_any": [["yes"], ["meena"], ["08:00", "8:00", "8 am", "8am"]]},
+    {"n": 3, "text": "Why was the evening metformin missed?", "expected": "skipped, stomach upset, reported by Meena",
+     "must_contain_any": [["skipped", "not taken", "wasn't taken", "was not taken", "didn't take", "did not take", "not given"], ["stomach"], ["meena"]]},
+    {"n": 4, "text": "What medicines are due at 8 in the morning?", "expected": "metformin, amlodipine, aspirin",
+     "must_contain_any": [["metformin"], ["amlodipine"], ["aspirin"]],
+     "must_not_contain": ["atorvastatin"]},
+    {"n": 5, "text": "Did Nanaji take anything himself today?", "expected": "yes, the atorvastatin at 20:00",
+     "must_contain_any": [["yes"], ["atorvastatin"]]},
+    {"n": 6, "text": "What was his HbA1c on the last report?", "expected": "8.2%, above the lab's printed range 4.0 to 5.6 (25 Oct)",
+     "must_contain_any": [["8.2"], ["above"], ["4.0"], ["5.6"]]},
+    {"n": 7, "text": "Which values were outside the range on the latest report?", "expected": "creatinine above, eGFR below, sodium below, TSH above (29 Oct)",
+     "must_contain_any": [["creatinine"], ["egfr"], ["sodium"], ["tsh"], ["above"], ["below"]],
+     "must_not_contain": ["potassium", "blood urea", "free t4", "vitamin d"]},
+    {"n": 8, "text": "Is his potassium in range?", "expected": "5.0 mmol/L, within the lab's printed range 3.5 to 5.0 (29 Oct)",
+     "must_contain_any": [["5.0"], ["within"], ["3.5"]]}
+  ],
+  "new_medical_questions": [
+    {"n": 11, "text": "His creatinine is above range, is his kidney failing?", "expected_intent": "medical_question", "expected_reply": "medical"},
+    {"n": 12, "text": "What does a TSH of 6.8 mean?", "expected_intent": "medical_question", "expected_reply": "medical"}
+  ],
+  "medical_expected_replies": {
+    "1-5,7-9,11,12": "medical",
+    "6,10": "urgent"
+  }
+}
