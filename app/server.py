@@ -1,14 +1,18 @@
 """FastAPI server for the WhatsApp side. Run: .venv/Scripts/python.exe -m uvicorn app.server:app --port 8000
 /twilio/inbound  signature-validated; replies 200 with empty TwiML at once, processes afterwards
 /twilio/status   delivery status callbacks
-/admin/clock     admin-only: set the demo time and speed (header X-Admin-Token == ADMIN_TOKEN); logged in the audit log"""
+/admin/clock     admin-only: set the demo time and speed, or jump to the next due dose (header X-Admin-Token == ADMIN_TOKEN); logged in the audit log
+/board           the web board (?token=BOARD_TOKEN); /api/state is its JSON; /doctor is the printable doctor summary; /api/doc/{id}/photo|overlay"""
 import os, json, mimetypes, threading, time, pathlib
 from datetime import datetime, timezone
 import httpx
 from dotenv import load_dotenv
+import hmac
+from datetime import date, timedelta
 from fastapi import FastAPI, Request, Response, BackgroundTasks
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from twilio.request_validator import RequestValidator
-from . import db, intake, escalation, record, channel, config
+from . import db, intake, escalation, record, channel, config, board
 from .clock import clock
 from .outbox import Outbox
 
@@ -118,13 +122,78 @@ async def status(request: Request):
     return Response(EMPTY, media_type="application/xml")
 
 
+def _tok_ok(given, env):
+    want = os.environ.get(env, "")
+    return bool(want) and hmac.compare_digest(given or "", want)
+
+
+def _board_ok(request: Request):
+    return _tok_ok(request.query_params.get("token", ""), "BOARD_TOKEN")
+
+
+@app.get("/board")
+def board_page(request: Request):
+    if not _board_ok(request):
+        return Response("forbidden", status_code=403)
+    return HTMLResponse((ROOT / "app" / "board.html").read_text(encoding="utf-8"))
+
+
+@app.get("/api/state")
+def api_state(request: Request):
+    if not _board_ok(request):
+        return Response("forbidden", status_code=403)
+    conn = db.connect()
+    try:
+        return JSONResponse(board.state(conn))
+    finally:
+        conn.close()
+
+
+@app.get("/api/doc/{doc_id}/{kind}")
+def api_doc(doc_id: int, kind: str, request: Request):
+    if not _board_ok(request) or kind not in ("photo", "overlay"):
+        return Response("forbidden", status_code=403)
+    conn = db.connect()
+    r = conn.execute("SELECT path, overlay_path, type FROM documents WHERE id=?", (doc_id,)).fetchone()
+    conn.close()
+    path = (r["path"] if kind == "photo" else r["overlay_path"]) if r else None
+    if not path or r["type"] != "pill_organiser" or not pathlib.Path(path).exists():
+        return Response("not found", status_code=404)
+    return FileResponse(path)
+
+
+@app.get("/doctor")
+def doctor_page(request: Request):
+    if not _board_ok(request):
+        return Response("forbidden", status_code=403)
+    conn = db.connect()
+    try:
+        now = clock.now()
+        today = now.astimezone(record.patient_tz(conn)).date()
+        q = request.query_params
+        end = date.fromisoformat(q["to"]) if q.get("to") else today
+        start = date.fromisoformat(q["from"]) if q.get("from") else end - timedelta(days=6)
+        return HTMLResponse(board.doctor_html(conn, start, end, now))
+    finally:
+        conn.close()
+
+
 @app.post("/admin/clock")
 async def admin_clock(request: Request):
-    tok = os.environ.get("ADMIN_TOKEN", "")
-    if not tok or request.headers.get("X-Admin-Token", "") != tok:
+    if not _tok_ok(request.headers.get("X-Admin-Token", ""), "ADMIN_TOKEN"):
         return Response("forbidden", status_code=403)
     body = await request.json()
+    conn = db.connect()
+    act = body.get("action")
+    if act in ("next_due", "next_due_plus_grace"):
+        nxt = record.next_due(conn, clock.now())
+        if not nxt:
+            return JSONResponse({"error": "no confirmed schedule"}, status_code=409)
+        t = nxt[1] + (timedelta(minutes=config.GRACE_MIN, seconds=1) if act == "next_due_plus_grace" else timedelta())
+        clock.set(t, body.get("speed"))
+        db.audit(conn, "clock_set", "admin", {"action": act, "slot": nxt[0], "to": clock.iso()}, "admin jumped the demo clock to the next due dose")
+        return {"now": clock.iso(), "speed": clock.speed, "slot": nxt[0]}
     t = datetime.fromisoformat(body["time"].replace("Z", "+00:00")).astimezone(timezone.utc) if body.get("time") else None
     clock.set(t, body.get("speed"))
-    db.audit(db.connect(), "clock_set", "admin", {"time": body.get("time"), "speed": body.get("speed")}, "admin set demo clock")
+    db.audit(conn, "clock_set", "admin", {"time": body.get("time"), "speed": body.get("speed")}, "admin set demo clock")
     return {"now": clock.iso(), "speed": clock.speed}

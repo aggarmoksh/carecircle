@@ -67,3 +67,15 @@ def seed_router(conn, today):
         d = today if ev["slot"].endswith("08:00") else today - timedelta(days=1)
         typ = {"given": "confirmed", "skipped": "skipped"}[ev["action"]]
         record.add_event(conn, ev["slot"], d, typ, ev["actor"], ev["reported_by"], ev["src"], ev.get("note"), "2026-11-03T05:00:00Z")
+
+
+def seed_phase2(conn, today):
+    """Phase 1 seed plus the pre-registered Phase 2 addition (tests/phase2_labels.json seed_addition): lab reports L1 and L2 loaded from
+    tests/lab_labels.json (not from extraction), confirmed by m3."""
+    from app import labs
+    seed_router(conn, today)
+    for key, when in (("L1", "2026-10-30T00:00:00Z"), ("L2", "2026-10-30T00:01:00Z")):
+        labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", key, "m3", when)
+
+
+PHASE2 = json.loads((ROOT / "tests" / "phase2_labels.json").read_text(encoding="utf-8"))

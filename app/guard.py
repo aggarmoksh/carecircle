@@ -1,6 +1,6 @@
 """Outbound guardrail. Spark only phrases; this code decides what may leave.
 Blocks (1) a medicine name that is not in the confirmed schedule, the current draft or the sender's own message,
-(2) a dose that is not in the record or the sender's message, (3) any text matching tests/guard_blocklist.txt.
+(2) a dose that is not in the record or the sender's message, (3) any text matching tests/guard_blocklist.txt, (4) a lab value with its unit that is not in the record (live or draft).
 Known limitation: medicine names are detected from a built-in list plus the record, so an unlisted drug name is not caught."""
 import re, pathlib
 from . import record
@@ -32,8 +32,38 @@ def _tokens(text):
     return set(re.findall(r"[a-z]+", text.lower()))
 
 
+LAB_UNITS = ["mg/dl", "g/dl", "mmol/l", "ng/ml", "ng/dl", "u/l", "uiu/ml", "miu/l", "lakh/cumm", "/cumm", "ml/min/1.73m2", "ml/min", "%"]
+
+
+def _unit_key(u):
+    return re.sub(r"\s+", "", u.lower().replace("µ", "u").replace("μ", "u"))
+
+
+def _lab_pairs(conn):
+    """(value, unit) pairs of every lab value in the record (live or draft)."""
+    return {(float(r["value"]), _unit_key(r["unit"])) for r in conn.execute("SELECT value, unit FROM lab_values")}
+
+
+def _strip_lab(conn, text):
+    """Remove 'value unit' pairs that are in the record from the text; return (stripped_text, [pairs not in the record])."""
+    allowed = _lab_pairs(conn)
+    units = sorted({_unit_key(u) for u in LAB_UNITS} | {u for _, u in allowed}, key=len, reverse=True)
+    rx = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)\s*(" + "|".join(re.escape(u) for u in units) + r")(?![a-z0-9])", re.I)
+    bad = []
+
+    def sub(m):
+        v, u = float(m.group(1).replace(",", "")), _unit_key(m.group(2))
+        if (v, u) in allowed:
+            return " "
+        bad.append(f"{m.group(1)} {m.group(2)}")
+        return m.group(0)
+    return rx.sub(sub, text), bad
+
+
 def check(conn, text, sender_text=""):
     """Return (ok, reason)."""
+    text, bad_lab = _strip_lab(conn, text)
+    bad_lab = [b for b in bad_lab if not _doses(b)]  # plain dose units are reported by the dose rule below
     allowed_tokens, allowed_doses = set(), set()
     for status in ("confirmed", "draft"):
         for l in record.lines(conn, status):
@@ -41,6 +71,8 @@ def check(conn, text, sender_text=""):
             allowed_doses.add((float(l["dose_amount"]), _norm_unit(l["dose_unit"])))
     allowed_tokens |= _tokens(sender_text)
     allowed_doses |= _doses(sender_text)
+    if bad_lab:
+        return False, f"lab value not in record: {', '.join(bad_lab)}"
     bad = sorted((_tokens(text) & KNOWN_DRUGS) - allowed_tokens)
     if bad:
         return False, f"medicine name not in record or sender message: {', '.join(bad)}"

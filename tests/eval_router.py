@@ -90,7 +90,7 @@ if __name__ == "__main__":
         texts += part_b()
     if "c" in which:
         texts += part_c()
-    f = ROOT / "outputs" / "phase1_eval.json"
+    f = ROOT / "outputs" / __import__("os").environ.get("EVAL_OUT", "phase1_eval.json")
     prev = json.loads(f.read_text()) if f.exists() else {}
     prev.update(OUT)
     f.write_text(json.dumps(prev, indent=1, ensure_ascii=False), encoding="utf-8")

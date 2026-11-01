@@ -3,33 +3,7 @@ import io, json, pathlib
 from . import llm
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-TYPES = ["discharge_sheet", "prescription", "pill_organiser", "lab_report", "other"]
-DOSE_UNITS = ["mg", "mcg", "g", "mL", "units", "tablet", "puff", "drop"]
-FREQS = ["once_daily", "twice_daily", "three_times_daily", "four_times_daily", "every_n_hours", "at_bedtime", "as_needed", "weekly"]
-FOOD = ["yes", "no", "unspecified"]
-SLOTS14 = [f"{d}_{p}" for d in "MON TUE WED THU FRI SAT SUN".split() for p in ("AM", "PM")]
-
-CLASSIFY_SCHEMA = {"name": "image_type", "schema": {"type": "object", "additionalProperties": False, "required": ["type", "confidence"],
-                   "properties": {"type": {"type": "string", "enum": TYPES}, "confidence": {"type": "number"}}}}
-CLASSIFY_PROMPT = ("Classify this image sent to a family care app. Choose one type: discharge_sheet (a hospital discharge summary or medicine list), "
-                   "prescription, pill_organiser (a weekly pill box with compartments), lab_report (test results), other. "
-                   "Give a confidence from 0 to 1. Do not read out or interpret any content.")
-
-EXTRACT_SCHEMA = {"name": "discharge_sheet", "schema": {
-    "type": "object", "additionalProperties": False, "required": ["meds"],
-    "properties": {"meds": {"type": "array", "items": {
-        "type": "object", "additionalProperties": False,
-        "required": ["name", "dose_amount", "dose_unit", "frequency", "times", "with_food", "notes"],
-        "properties": {"name": {"type": "string"}, "dose_amount": {"type": "number"}, "dose_unit": {"type": "string", "enum": DOSE_UNITS},
-                       "frequency": {"type": "string", "enum": FREQS}, "times": {"type": "array", "items": {"type": "string"}},
-                       "with_food": {"type": "string", "enum": FOOD}, "notes": {"type": "string"}}}}}}}
-EXTRACT_PROMPT = (
-    "This is a photo of a fictional discharge sheet. Extract every medicine listed on it as structured data. "
-    "Rules: name = generic drug name exactly as printed, lowercase. dose_amount = number only. "
-    "times = clock times in HH:MM 24h ONLY if the sheet prints clock times; otherwise an empty list. Never invent or infer times. "
-    "with_food: yes = with or after food; no = before food or empty stomach; unspecified = the sheet says nothing. "
-    "A medicine that is crossed out or marked STOP is not listed. notes = any extra instruction text as printed. "
-    "Copy what is printed; give no medical advice and add nothing that is not on the sheet.")
+from .prompts import *  # noqa: F401,F403  (TYPES, DOSE_UNITS, FREQS, FOOD, SLOTS14, classify and extract prompts/schemas)
 
 ORG_SCHEMA = {"name": "organiser", "schema": {"type": "object", "additionalProperties": False, "required": ["items"], "properties": {
     "items": {"type": "array", "items": {"type": "object", "additionalProperties": False, "required": ["slot", "state"], "properties": {

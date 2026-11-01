@@ -2,7 +2,7 @@
 image -> classify -> (discharge/prescription | organiser | lab report | ask) ; voice -> ffmpeg + transcribe -> text path ;
 text -> intent {dose_update, record_question, correction, volunteer, medical_question, urgent_symptom, other}."""
 import json, pathlib, re
-from . import config, record, vision, voice, llm
+from . import config, record, vision, voice, llm, labs, qa
 from .clock import clock
 from .db import audit
 from .outbox import FIXED_MEDICAL, FIXED_URGENT, FIXED_LAB
@@ -18,10 +18,10 @@ INTENT_SCHEMA = {"name": "intent", "schema": {"type": "object", "additionalPrope
 INTENT_PROMPT = (
     "Classify one message from a member of a family care circle looking after an elderly relative. Choose exactly one intent:\n"
     "- dose_update: reports that a dose was given, skipped, or the sender is unsure (including short replies like 'done').\n"
-    "- record_question: asks what the care record says (what is due, who gave a dose, who is on duty, how many medicines, a time).\n"
+    "- record_question: asks what the care record says (what is due, who gave a dose, why a dose was skipped or missed, who is on duty, how many medicines, a time, what a lab value was, whether a value was inside or outside the lab's printed range, which values were outside it).\n"
     "- correction: says something in a drafted schedule is wrong or gives a fix for it.\n"
     "- volunteer: offers to take a task (e.g. 'I will', 'I can take that').\n"
-    "- medical_question: asks for medical advice or information (doses, interactions, what a medicine is for, whether something is safe, what a value means).\n"
+    "- medical_question: asks for medical advice or information (doses, interactions, what a medicine is for, whether something is safe, whether a value is bad or dangerous, what a value or a result means, what a condition or an organ is doing).\n"
     "- urgent_symptom: describes a person currently having a worrying or emergency symptom (chest pain, confusion, collapse, difficulty breathing).\n"
     "- other: anything else.\n"
     "A draft schedule is {draft} awaiting confirmation. Message: \"{text}\"")
@@ -47,12 +47,6 @@ CORR_PROMPT = ("A member is correcting a drafted medicine schedule. The draft is
                "dose_unit one of mg, mcg, g, mL, units, tablet, puff, drop; frequency one of once_daily, twice_daily, three_times_daily, four_times_daily, "
                "every_n_hours, at_bedtime, as_needed, weekly; with_food one of yes, no, unspecified; use field 'remove' with empty value to delete a line). "
                "Only include changes the member actually stated. Message: \"{text}\"")
-
-QA_PROMPT = ("You answer questions about a family's care record. Use ONLY the JSON record below. Answer in one or two short plain sentences, "
-             "naming people by first name. If the record does not contain the answer say \"The record doesn't say.\" Give no medical advice and "
-             "add nothing that is not in the record. Begin yes/no questions with Yes or No. Always say who did it (use 'himself' when the record says "
-             "Nanaji himself) and include any recorded reason or note, such as why a dose was skipped. When asked what is due, list each medicine "
-             "with its time as HH:MM. 'on_duty_tonight' is who is on duty tonight.\nRecord: {rec}\nQuestion: \"{text}\"")
 
 
 def nm(conn, mid):
@@ -139,10 +133,30 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
             audit(conn, "organiser_ok", mid, f"doc {doc}", "organiser agrees with the record")
             _send(ob, mid, "The organiser agrees with the record for this week so far.", "organiser matches record")
     elif typ == "lab_report":
-        conn.execute("UPDATE documents SET status='stored' WHERE id=?", (doc,))
-        record.add_task(conn, f"Discuss lab report #{doc} with the doctor", None, f"document {doc}", record.iso(now))
-        audit(conn, "lab_report_stored", mid, {"doc": doc}, "lab report stored, not interpreted")
-        _send(ob, mid, FIXED_LAB, "lab report stored; fixed reply")
+        try:
+            rep = labs.extract(prepped, doc)
+        except Exception as e:  # extraction failed: keep the report stored only, as in Phase 1
+            rep = None
+            audit(conn, "lab_extract_error", mid, type(e).__name__, "lab extraction failed; stored only")
+        if not rep or not rep["tests"] or not re.fullmatch(r"\d{4}-\d\d-\d\d", rep["report_date"] or ""):
+            conn.execute("UPDATE documents SET status='stored' WHERE id=?", (doc,))
+            record.add_task(conn, f"Discuss lab report #{doc} with the doctor", None, f"document {doc}", record.iso(now))
+            audit(conn, "lab_report_stored", mid, {"doc": doc}, "lab report stored, not interpreted")
+            _send(ob, mid, FIXED_LAB, "lab report stored; fixed reply")
+            return
+        conn.execute("UPDATE documents SET extraction_json=?, status='extracted' WHERE id=?", (json.dumps(rep), doc))
+        labs.save_draft(conn, doc, rep, record.iso(now))
+        oor = labs.out_of_range(rep["tests"])
+        within = [t["test"] for t in rep["tests"] if t["status"] == "within"]
+        norange = [t["test"] for t in rep["tests"] if t["status"] == "no_range"]
+        lines_ = [f"I read this lab report from {labs.pretty_date(rep['report_date'])}: {len(rep['tests'])} values, {len(oor)} outside the lab's printed range."]
+        lines_ += ["- " + labs.value_line(t) for t in oor]
+        if within:
+            lines_.append("Within the lab's printed range: " + ", ".join(within) + ".")
+        if norange:
+            lines_.append("No range printed: " + ", ".join(norange) + ".")
+        audit(conn, "lab_draft_created", mid, {"doc": doc, "tests": len(rep["tests"]), "outside_range": len(oor)}, "lab values saved as a draft; nothing live until a member says YES")
+        _send(ob, mid, "\n".join(lines_) + "\nI can't interpret results. Reply YES if this matches the paper.", "lab draft summary sent for confirmation")
     else:
         conn.execute("UPDATE documents SET status='stored' WHERE id=?", (doc,))
         conn.commit()
@@ -163,7 +177,19 @@ def _text(conn, ob, mid, text, via="text"):
                 _process_doc(conn, ob, mid, pend["id"], typ, p, now)
                 return "image_type_answer"
     has_draft = bool(record.lines(conn, "draft"))
+    lab_draft = labs.draft(conn)
+    newer_sched = has_draft and (record.lines(conn, "draft")[0]["source_doc_id"] or 0) > (lab_draft["doc_id"] or 0) if lab_draft else False
+    if lab_draft and low in YES and not newer_sched:
+        rep = labs.confirm_draft(conn, mid, record.iso(now))
+        oor = labs.out_of_range(rep["tests"])
+        when = labs.pretty_date(rep["report_date"])
+        record.add_task(conn, f"Discuss the lab report from {when} with the doctor", None, "lab report", record.iso(now))
+        audit(conn, "lab_confirmed", mid, {"report": rep["id"], "date": rep["report_date"], "outside_range": len(oor)}, "member said YES; lab values are live")
+        _send(ob, mid, f"Saved. The lab report from {when} is now in the care record.", "YES received for lab report")
+        ob.relay(f"{nm(conn, mid)} added a lab report from {when}: {len(oor)} values are outside the lab's printed range. See the board.", [mid], "state change: lab report added")
+        return "yes_lab"
     if has_draft and low in YES:
+
         n = record.confirm_drafts(conn, mid, record.iso(now))
         audit(conn, "schedule_confirmed", mid, {"lines": n}, "member said YES")
         left = len(record.lines(conn, "draft"))
@@ -208,10 +234,12 @@ def _dose(conn, ob, mid, text, now):
 
 
 def _qa(conn, ob, mid, text, now):
-    rec = json.dumps(record.snapshot(conn, now))
-    ans, dt, usd, raw = llm.spark("phase1", "record-answer", [{"role": "user", "content": QA_PROMPT.format(rec=rec, text=text)}])
-    audit(conn, "record_answer", mid, {"q": text, "a": ans}, "read-only answer from the record")
-    _send(ob, mid, ans.strip(), "record question answered from the record", text)
+    try:
+        ans, info = qa.answer(conn, text, now)
+    except Exception as e:  # never leave the member without a reply; never guess
+        ans, info = qa.NOT_FOUND, {"error": type(e).__name__, "source": "fixed: error"}
+    audit(conn, "record_answer", mid, {"q": text, "a": ans, "query": info.get("mapping"), "facts": info.get("facts"), "source": info.get("source")}, "answered by code from the record; Spark only phrased the facts")
+    _send(ob, mid, ans, "record question answered from the record", text)
 
 
 def _correction(conn, ob, mid, text, now):

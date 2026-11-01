@@ -190,6 +190,14 @@ def log_confirmation(conn, slot, action, actor, reported_by, source, note, now, 
     return typ, d
 
 
+def next_due(conn, now):
+    """(slot, due datetime) of the next scheduled dose strictly after now (patient timezone), or None."""
+    today = now.astimezone(patient_tz(conn)).date()
+    cands = [(s, due_at(conn, s, d)) for s in slots(conn) for d in (today, today + timedelta(days=1))]
+    cands = [c for c in cands if c[1] > now]
+    return min(cands, key=lambda c: c[1]) if cands else None
+
+
 # ---------- rota ----------
 def on_duty(conn, slot):
     r = conn.execute("SELECT member_id FROM rota WHERE period=?", (period_of(slot),)).fetchone()

@@ -1,9 +1,9 @@
-"""SQLite care record. Tables: circle, members, medications, schedule_lines, dose_events, documents, rota, tasks, audit_log, queue."""
-import json, pathlib, sqlite3
+"""SQLite care record. Tables: circle, members, medications, schedule_lines, dose_events, documents, rota, tasks, lab_reports, lab_values, audit_log, queue."""
+import json, os, pathlib, sqlite3
 from .clock import clock
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-DB_PATH = ROOT / "data" / "carecircle.db"
+DB_PATH = pathlib.Path(os.environ.get("CARECIRCLE_DB") or ROOT / "data" / "carecircle.db")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS circle(id INTEGER PRIMARY KEY, name TEXT, patient_name TEXT, patient_tz TEXT);
@@ -21,6 +21,10 @@ CREATE TABLE IF NOT EXISTS documents(id INTEGER PRIMARY KEY AUTOINCREMENT, path 
 CREATE TABLE IF NOT EXISTS rota(period TEXT PRIMARY KEY CHECK(period IN('morning','evening')), member_id TEXT);
 CREATE TABLE IF NOT EXISTS tasks(id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, owner TEXT, status TEXT DEFAULT 'open', source TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS audit_log(id INTEGER PRIMARY KEY AUTOINCREMENT, at TEXT, kind TEXT, actor TEXT, detail TEXT, reason TEXT);
+CREATE TABLE IF NOT EXISTS lab_reports(id INTEGER PRIMARY KEY AUTOINCREMENT, doc_id INTEGER, lab TEXT, report_date TEXT,
+  status TEXT CHECK(status IN('draft','live')), confirmed_by TEXT, confirmed_at TEXT, created_at TEXT);
+CREATE TABLE IF NOT EXISTS lab_values(id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER, test TEXT, value REAL, unit TEXT,
+  range_text TEXT, range_low REAL, range_high REAL, printed_flag TEXT, status TEXT);
 CREATE TABLE IF NOT EXISTS queue(id INTEGER PRIMARY KEY AUTOINCREMENT, member_id TEXT, text TEXT, reason TEXT, created_at TEXT, sent_at TEXT);
 """
 
