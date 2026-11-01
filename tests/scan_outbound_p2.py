@@ -66,7 +66,7 @@ for f in sorted(glob.glob(str(ROOT / "outputs" / "phase2_texts_*.jsonl"))):
     for line in pathlib.Path(f).read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
         scan(r["text"], QUESTIONS.get((r["set"], r["n"]), ""), pathlib.Path(f).name)
-for dbf in ("data/replay2.db", "data/carecircle.db"):
+for dbf in ("data/replay2.db", "data/carecircle.db", "data/live2.db"):
     p = ROOT / dbf
     if not p.exists():
         continue
