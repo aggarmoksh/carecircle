@@ -1,0 +1,208 @@
+{
+  "written_by_user": true,
+  "timestamp": "2026-11-01T02:05:00Z",
+  "_authorship": "Written by the advisor on 2026-10-31 19:05 PT before any lab-report extraction code or run, from the fictional content the user will paste into the lab-report document. 'written_by_user' is true because the user approved this content in chat ('agree'); the user must check the document matches before Block F runs.",
+  "_rules": {
+    "status": "computed by code from the extracted value and the extracted printed range, never by the model",
+    "a - b": "within if a <= value <= b; below if value < a; above if value > b",
+    "< b": "within if value < b, else above",
+    "> a": "within if value > a, else below",
+    "empty range": "no_range; the model must return no range (no invented ranges)",
+    "normalise": "test names lowercase; units compared case-insensitively with spaces removed and the micro sign treated as u; numbers parsed with thousands separators removed",
+    "scored_fields": "value, unit, range (low and high together) per test: 3 per test x 18 tests = 54 fields; vitamin d must come back with an empty range"
+  },
+  "reports": {
+    "L1": {
+      "lab": "Sunrise Diagnostics",
+      "report_date": "2026-10-25",
+      "tests": [
+        {
+          "test": "haemoglobin",
+          "value": 11.8,
+          "unit": "g/dL",
+          "range_low": 13.0,
+          "range_high": 17.0,
+          "range_text": "13.0 - 17.0",
+          "printed_flag": "L",
+          "expected_status": "below"
+        },
+        {
+          "test": "total wbc count",
+          "value": 7200,
+          "unit": "/cumm",
+          "range_low": 4000,
+          "range_high": 11000,
+          "range_text": "4,000 - 11,000",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "platelet count",
+          "value": 1.9,
+          "unit": "lakh/cumm",
+          "range_low": 1.5,
+          "range_high": 4.5,
+          "range_text": "1.5 - 4.5",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "hba1c",
+          "value": 8.2,
+          "unit": "%",
+          "range_low": 4.0,
+          "range_high": 5.6,
+          "range_text": "4.0 - 5.6",
+          "printed_flag": "H",
+          "expected_status": "above"
+        },
+        {
+          "test": "fasting blood sugar",
+          "value": 152,
+          "unit": "mg/dL",
+          "range_low": 70,
+          "range_high": 100,
+          "range_text": "70 - 100",
+          "printed_flag": "",
+          "expected_status": "above"
+        },
+        {
+          "test": "total cholesterol",
+          "value": 186,
+          "unit": "mg/dL",
+          "range_low": null,
+          "range_high": 200,
+          "range_text": "< 200",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "ldl cholesterol",
+          "value": 112,
+          "unit": "mg/dL",
+          "range_low": null,
+          "range_high": 100,
+          "range_text": "< 100",
+          "printed_flag": "",
+          "expected_status": "above"
+        },
+        {
+          "test": "hdl cholesterol",
+          "value": 38,
+          "unit": "mg/dL",
+          "range_low": 40,
+          "range_high": null,
+          "range_text": "> 40",
+          "printed_flag": "L",
+          "expected_status": "below"
+        },
+        {
+          "test": "triglycerides",
+          "value": 150,
+          "unit": "mg/dL",
+          "range_low": null,
+          "range_high": 150,
+          "range_text": "< 150",
+          "printed_flag": "",
+          "expected_status": "above"
+        }
+      ]
+    },
+    "L2": {
+      "lab": "Sunrise Diagnostics",
+      "report_date": "2026-10-29",
+      "tests": [
+        {
+          "test": "serum creatinine",
+          "value": 1.4,
+          "unit": "mg/dL",
+          "range_low": 0.7,
+          "range_high": 1.3,
+          "range_text": "0.7 - 1.3",
+          "printed_flag": "H",
+          "expected_status": "above"
+        },
+        {
+          "test": "blood urea",
+          "value": 38,
+          "unit": "mg/dL",
+          "range_low": 15,
+          "range_high": 40,
+          "range_text": "15 - 40",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "egfr",
+          "value": 48,
+          "unit": "mL/min/1.73m2",
+          "range_low": 60,
+          "range_high": null,
+          "range_text": "> 60",
+          "printed_flag": "",
+          "expected_status": "below"
+        },
+        {
+          "test": "sodium",
+          "value": 134,
+          "unit": "mmol/L",
+          "range_low": 135,
+          "range_high": 145,
+          "range_text": "135 - 145",
+          "printed_flag": "L",
+          "expected_status": "below"
+        },
+        {
+          "test": "potassium",
+          "value": 5.0,
+          "unit": "mmol/L",
+          "range_low": 3.5,
+          "range_high": 5.0,
+          "range_text": "3.5 - 5.0",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "tsh",
+          "value": 6.8,
+          "unit": "uIU/mL",
+          "range_low": 0.4,
+          "range_high": 4.0,
+          "range_text": "0.4 - 4.0",
+          "printed_flag": "H",
+          "expected_status": "above"
+        },
+        {
+          "test": "free t4",
+          "value": 1.1,
+          "unit": "ng/dL",
+          "range_low": 0.8,
+          "range_high": 1.8,
+          "range_text": "0.8 - 1.8",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "alt",
+          "value": 32,
+          "unit": "U/L",
+          "range_low": 7,
+          "range_high": 56,
+          "range_text": "7 - 56",
+          "printed_flag": "",
+          "expected_status": "within"
+        },
+        {
+          "test": "vitamin d",
+          "value": 18,
+          "unit": "ng/mL",
+          "range_low": null,
+          "range_high": null,
+          "range_text": "",
+          "printed_flag": "",
+          "expected_status": "no_range"
+        }
+      ]
+    }
+  }
+}
