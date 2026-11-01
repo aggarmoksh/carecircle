@@ -21,3 +21,10 @@
 - Third attempt (2026-10-31 20:01Z), after the sender and webhook URLs were confirmed and all three recipients had just sent "hi" (fresh 24 h windows, r3 re-joined): same request, same HTTP 400 "ContentSid Required". The 24 h window is therefore not the cause. Outbound counter now reads 3; true delivered by the app: 0. Stopped; no further sends.
 - Counter reset to 3 on 2026-10-31 after the account upgrade: the 3 earlier rejected attempts were never delivered, so true outbound = 3 real sends (P4b).
 - P5 trial (i), attempt 1 (2026-11-01): r2 replied 'Done' at 25.8 s although the trial required no reply, so no escalation was sent (correct behaviour for a reply, but the trial was invalid for (i)). Kept as outputs/p5_i_attempt1_r2_replied_at_26s.json; (i) re-run, and (ii) still to be run on its own. Nudge delivered in 3.2 s.
+
+## Phase 1 (2026-11-01)
+- Spark at temperature 0 is not deterministic: the same record-question prompt scored 6/8, 4/8, 7/8 on three runs (outputs/phase1_eval_c_run*.json). The prompt was then changed (after results were seen) and re-run twice: 8/8, 8/8. All runs reported.
+- Two of my edit scripts silently failed to apply (a string did not match), so two of the "record question" runs were repeats of the same prompt rather than the intended change; discovered from the unchanged results and fixed with the Edit tool.
+- probes/common.py and probes/channel.py were moved into app/ as the brief asked; the Phase 0 probe scripts that import them are only reproducible from tag phase0-final.
+- Live run: r3 (London) was asleep when the relay was due (01:40 London), so it was queued per the 08:00 to 22:00 rule and delivered later by a one-off flush with the clock set to a London morning. The server's own scheduler was off (CC_TICKER=0) for the live run.
+- Brief seed vs questions: the seed lists v04 and v05 (evening events) but the record questions ask what is due "tonight" and treat the skip as last night; the seed was applied with evening events dated yesterday and morning events dated today.
