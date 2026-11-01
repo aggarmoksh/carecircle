@@ -1,0 +1,17 @@
+# Advice blocklist for the outbound guard. One case-insensitive regex per line; '#' starts a comment.
+# Any outbound text matching a line is replaced by the fixed reply and logged.
+\byou (should|must|can|could|may) (take|give|stop|increase|decrease|reduce|double|skip|hold|withhold|combine|mix)\b
+\b(should|shouldn't|should not) (stop|take|give|skip|combine|mix)\b
+\b(safe|unsafe|dangerous|fine|ok|okay) to (take|give|combine|mix|skip|stop|have)\b
+\bit('s| is) (safe|ok|okay|fine|normal|dangerous|serious|nothing)\b
+\b(is|are|was|were) (normal|abnormal|too high|too low|dangerous|harmful|toxic)\b
+\b(increase|decrease|double|halve|reduce|raise|lower|adjust|change) the (dose|dosage)\b
+\bextra (dose|tablet|pill|dosage)\b
+\b(side effects?|interactions?|contraindicat\w*|overdos\w*|diagnos\w*|prognosis|withdrawal)\b
+\b(i|we) (recommend|suggest|advise)\b
+\bmaximum (dose|daily|amount)\b
+\b(blood )?(sugar|pressure|glucose) (is|was|looks) (high|low|normal|fine)\b
+\bnormal range\b
+\bused (to|for) (treat|treating|lower|lowering|control|controlling|manage|managing|prevent|preventing)\b
+\bnothing to worry\b
+\b(take|give) (it|them|him|her|one|two|half)\b.{0,20}\b(now|instead|tonight|later|early|late)\b
