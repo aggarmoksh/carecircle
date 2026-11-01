@@ -20,3 +20,4 @@
 - No third attempt made. Nothing else changed.
 - Third attempt (2026-10-31 20:01Z), after the sender and webhook URLs were confirmed and all three recipients had just sent "hi" (fresh 24 h windows, r3 re-joined): same request, same HTTP 400 "ContentSid Required". The 24 h window is therefore not the cause. Outbound counter now reads 3; true delivered by the app: 0. Stopped; no further sends.
 - Counter reset to 3 on 2026-10-31 after the account upgrade: the 3 earlier rejected attempts were never delivered, so true outbound = 3 real sends (P4b).
+- P5 trial (i), attempt 1 (2026-11-01): r2 replied 'Done' at 25.8 s although the trial required no reply, so no escalation was sent (correct behaviour for a reply, but the trial was invalid for (i)). Kept as outputs/p5_i_attempt1_r2_replied_at_26s.json; (i) re-run, and (ii) still to be run on its own. Nudge delivered in 3.2 s.
