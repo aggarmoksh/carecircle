@@ -54,7 +54,7 @@ CORR_SCHEMA = {"name": "corrections", "schema": {"type": "object", "additionalPr
         "value": {"type": "string"}}}}}}}
 CORR_PROMPT = ("A member is correcting a drafted medicine schedule. The draft is:\n{draft}\nTurn the member's message into edit operations. "
                "line = the line number; field = what to change; value = the new value as plain text (times as comma-separated HH:MM 24h; "
-               "dose_unit one of mg, mcg, g, mL, units, tablet, puff, drop; frequency one of once_daily, twice_daily, three_times_daily, four_times_daily, "
+               "dose_unit one of mg, mcg, g, mL, units, tablet, puff, drop, tsf, tbsp, sachet; frequency one of once_daily, twice_daily, three_times_daily, four_times_daily, "
                "every_n_hours, at_bedtime, as_needed, weekly; with_food one of yes, no, unspecified; use field 'remove' with empty value to delete a line). "
                "Only include changes the member actually stated. Message: \"{text}\"")
 
@@ -100,10 +100,10 @@ def _image(conn, ob, mid, path, now):
     cur = conn.execute("INSERT INTO documents(path,sender,status,created_at) VALUES(?,?,?,?)", (str(path), mid, "new", record.iso(now)))
     doc = cur.lastrowid
     p, _ = vision.prep(path, f"doc{doc}")
-    typ, conf = vision.classify(p, doc)
-    conn.execute("UPDATE documents SET type=?, confidence=? WHERE id=?", (typ, conf, doc))
+    typ, conf, hand = vision.classify(p, doc)
+    conn.execute("UPDATE documents SET type=?, confidence=?, has_handwriting=? WHERE id=?", (typ, conf, int(hand), doc))
     conn.commit()
-    audit(conn, "image_classified", mid, {"doc": doc, "type": typ, "confidence": round(conf, 2)}, "intake router")
+    audit(conn, "image_classified", mid, {"doc": doc, "type": typ, "confidence": round(conf, 2), "handwriting": hand}, "intake router")
     if conf < config.IMAGE_CONF_THRESHOLD or typ == "other":
         conn.execute("UPDATE documents SET status='awaiting_type' WHERE id=?", (doc,))
         conn.commit()
@@ -117,13 +117,14 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
     if typ in ("discharge_sheet", "prescription"):
         meds = vision.extract(prepped, doc)
         conn.execute("UPDATE documents SET extraction_json=?, status='extracted', type=? WHERE id=?", (json.dumps(meds), typ, doc))
-        record.add_draft(conn, doc, meds, record.iso(now))
+        hand = bool(conn.execute("SELECT has_handwriting FROM documents WHERE id=?", (doc,)).fetchone()[0])
+        record.add_draft(conn, doc, meds, record.iso(now), hand=hand)
         summ = record.draft_summary(conn)
         extra = ""
         if any(not l["times"] for l in record.lines(conn, "draft")):
             extra = "\nSome lines have no clock time printed; tell me the time for each (for example 'line 2 at 08:00') before they can start."
         if record.unsure_lines(conn):
-            extra += "\nLines marked ? are hard to read. Please type the correct name for each (for example 'line 2 is metformin') before I can start."
+            extra += "\nLines marked ? are hard to read" + (" (this sheet has handwriting, so every name needs your check)" if hand else "") + ". Please type the correct name for each (for example 'line 2 is metformin') before I can start."
         audit(conn, "draft_created", mid, {"doc": doc, "lines": len(summ)}, "extraction saved as draft; nothing live until a member says YES")
         _send(ob, mid, "Here's what I read:\n" + "\n".join(summ) + extra + "\nReply YES to start this schedule, or tell me what's wrong.", "draft summary sent for confirmation")
     elif typ == "pill_organiser":

@@ -43,7 +43,7 @@ def connect(path=None):
 
 
 MIGRATIONS = [("members", "relay_pref", "TEXT DEFAULT 'everything'"), ("medications", "name_as_printed", "TEXT DEFAULT ''"),
-              ("medications", "generic_if_printed", "TEXT DEFAULT ''"), ("medications", "legibility", "TEXT DEFAULT 'clear'")]
+              ("medications", "generic_if_printed", "TEXT DEFAULT ''"), ("medications", "legibility", "TEXT DEFAULT 'clear'"), ("documents", "has_handwriting", "INTEGER DEFAULT 0")]
 
 
 def _add_columns(conn):

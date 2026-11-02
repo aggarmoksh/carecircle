@@ -86,14 +86,15 @@ def fmt_dose(amount, unit):
     return f"{amount:g} {unit}"
 
 
-def add_draft(conn, doc_id, meds, now_iso):
+def add_draft(conn, doc_id, meds, now_iso, hand=False):
+    """hand=True: the document has handwriting, so every line is marked unsure (a member confirms each name before YES)."""
     for old in conn.execute("SELECT id, med_id FROM schedule_lines WHERE status='draft'").fetchall():
         conn.execute("DELETE FROM schedule_lines WHERE id=?", (old["id"],))
         conn.execute("DELETE FROM medications WHERE id=?", (old["med_id"],))
     for m in meds:
         cur = conn.execute("INSERT INTO medications(name,dose_amount,dose_unit,frequency,with_food,notes,name_as_printed,generic_if_printed,legibility) VALUES(?,?,?,?,?,?,?,?,?)",
-                           (m["name"].strip().lower(), float(m["dose_amount"]), m["dose_unit"], m["frequency"], m["with_food"], m.get("notes", ""),
-                            m.get("name_as_printed", ""), m.get("generic_if_printed", ""), m.get("legibility", "clear")))
+                           (m["name"].strip().lower(), float(m["dose_amount"]), (m.get("unit_as_printed") or "other") if m["dose_unit"] == "other" else m["dose_unit"], m["frequency"], m["with_food"], m.get("notes", ""),
+                            m.get("name_as_printed", ""), m.get("generic_if_printed", ""), "unsure" if hand else m.get("legibility", "clear")))
         conn.execute("INSERT INTO schedule_lines(med_id,times_json,status,source_doc_id,created_at) VALUES(?,?,?,?,?)",
                      (cur.lastrowid, json.dumps(sorted(m["times"])), "draft", doc_id, now_iso))
     conn.commit()
@@ -156,6 +157,14 @@ def due_at(conn, slot, d):
     return datetime.combine(d, dtime(int(hh), int(mm)), tzinfo=patient_tz(conn)).astimezone(timezone.utc)
 
 
+def next_dose_due(conn, slot, d):
+    """When the next dose of the same medicine falls due after this occurrence (next listed time that day, else the first time next day)."""
+    name, t = slot.rsplit("_", 1)
+    times = sorted({t for l in lines(conn, "confirmed") if l["name"] == name for t in l["times"]} | {t})
+    later = [x for x in times if x > t]
+    return due_at(conn, f"{name}_{later[0]}", d) if later else due_at(conn, f"{name}_{times[0]}", d + timedelta(days=1))
+
+
 def events(conn, slot, d):
     return [dict(r) for r in conn.execute("SELECT * FROM dose_events WHERE slot=? AND due_date=? ORDER BY id", (slot, str(d)))]
 
@@ -167,7 +176,7 @@ def status_of(conn, slot, d, now):
     for t in ("skipped", "unsure", "missed"):
         if t in ev:
             return t
-    if ev & {"nudged", "escalated"}:
+    if ev & {"nudged", "escalated"} or now >= due_at(conn, slot, d) + timedelta(minutes=config.GRACE_MIN):
         return "overdue"
     if "due" in ev or now >= due_at(conn, slot, d):
         return "due"

@@ -125,7 +125,7 @@ def test_old_unconfirmed_doses_become_missed_when_the_scheduler_runs():
     conn, ob, ch = circle("2026-11-02T00:30:00", tz="Asia/Kolkata")
     seed_lines(conn, [("metformin", 500, "mg", ["08:00"])], confirmed_at="2026-11-02T00:00:00Z")
     clock.set(utc("2026-11-06T09:00:00"), speed=0)       # four days later, scheduler had been stopped
-    assert record.status_of(conn, "metformin_08:00", date(2026, 11, 3), clock.now()) == "due"   # the old bug
+    assert record.status_of(conn, "metformin_08:00", date(2026, 11, 3), clock.now()) == "overdue"   # the old bug: nothing ever closed it
     escalation.tick(conn, ob)
     for d in (date(2026, 11, 2), date(2026, 11, 3), date(2026, 11, 4)):
         assert record.status_of(conn, "metformin_08:00", d, clock.now()) == "missed"
@@ -263,3 +263,51 @@ def test_demo_reset_restores_the_start_state():
     assert record.on_duty(conn, "metformin_08:00") == "m2"
     t = demo.start_time(conn, date(2026, 11, 3))
     assert t == utc("2026-11-03T02:25:00")                 # 07:55 IST
+
+
+# ---------------- advisor round 2: units, handwriting, missed rule ----------------
+def test_unit_is_kept_as_printed_never_converted():
+    props = prompts.EXTRACT_SCHEMA["schema"]["properties"]["meds"]["items"]["properties"]
+    assert {"tsf", "tbsp", "sachet", "other"} <= set(props["dose_unit"]["enum"]) and "unit_as_printed" in props
+    assert "NEVER convert" in prompts.EXTRACT_PROMPT
+    conn, ob, ch = circle(tz="Asia/Kolkata")
+    m = meds()
+    m[0].update(name="cough syrup", dose_amount=2, dose_unit="tsf", unit_as_printed="")
+    m[1].update(dose_amount=1, dose_unit="other", unit_as_printed="scoop")
+    record.add_draft(conn, 1, m, record.iso(clock.now()))
+    s = record.draft_summary(conn)
+    assert s[0].startswith("1. cough syrup 2 tsf,") and "mL" not in s[0]       # 2 TSF is not 2 mL
+    assert s[1].startswith("2. telmisartan 1 scoop,")
+
+
+def test_handwritten_document_marks_every_line_unsure_and_blocks_yes():
+    props = prompts.CLASSIFY_SCHEMA["schema"]
+    assert "has_handwriting" in props["required"]
+    conn, ob, ch = circle(tz="Asia/Kolkata")
+    record.add_draft(conn, 1, meds(unsure=False), record.iso(clock.now()), hand=True)    # both lines came back 'clear'
+    assert [l["legibility"] for l in record.lines(conn, "draft")] == ["unsure", "unsure"]
+    assert all(x.split(". ", 1)[1].startswith("? ") for x in record.draft_summary(conn))
+    assert intake.handle(conn, ob, "m2", text="YES")["intent"] == "yes_blocked"
+    record.apply_ops(conn, [dict(line=1, field="name", value="metformin"), dict(line=2, field="name", value="telmisartan")])
+    assert intake.handle(conn, ob, "m2", text="YES")["intent"] == "yes"
+
+
+def test_printed_document_keeps_per_line_legibility():
+    conn, ob, ch = circle(tz="Asia/Kolkata")
+    record.add_draft(conn, 1, meds(unsure=False), record.iso(clock.now()), hand=False)
+    assert record.unsure_lines(conn) == []
+
+
+def test_dose_is_overdue_escalating_after_grace_and_missed_when_next_dose_falls_due():
+    conn, ob, ch = circle("2026-11-02T00:30:00", tz="Asia/Kolkata")
+    seed_lines(conn, [("metformin", 500, "mg", ["08:00", "20:00"])], confirmed_at="2026-11-02T00:00:00Z")
+    d = date(2026, 11, 2)
+    clock.set(utc("2026-11-02T02:50:00"), speed=0)       # 08:20 IST: 20 min past due, past the 15 min grace
+    assert record.status_of(conn, "metformin_08:00", d, clock.now()) == "overdue"
+    clock.set(utc("2026-11-02T08:00:00"), speed=0)       # 13:30 IST: 5.5 h late, 12 h rule would not fire; next dose (20:00) not yet due
+    escalation.settle_missed(conn, clock.now())
+    assert record.status_of(conn, "metformin_08:00", d, clock.now()) != "missed"
+    clock.set(utc("2026-11-02T14:31:00"), speed=0)       # 20:01 IST: the next metformin dose has fallen due
+    escalation.settle_missed(conn, clock.now())
+    assert record.status_of(conn, "metformin_08:00", d, clock.now()) == "missed"
+    assert record.status_of(conn, "metformin_20:00", d, clock.now()) != "missed"

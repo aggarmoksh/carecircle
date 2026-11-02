@@ -23,7 +23,7 @@ def prep(src, name):
 
 def classify(path, item):
     r, dt, usd = llm.spark_json("phase1", f"classify-{item}", _msg(CLASSIFY_PROMPT, path), CLASSIFY_SCHEMA)
-    return r["type"], float(r["confidence"])
+    return r["type"], float(r["confidence"]), bool(r["has_handwriting"])
 
 
 def extract(path, item):

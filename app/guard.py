@@ -16,7 +16,7 @@ citalopram diazepam lorazepam alprazolam spironolactone hydrochlorothiazide rami
 nifedipine diltiazem verapamil sitagliptin gliclazide glibenclamide pioglitazone empagliflozin dapagliflozin liraglutide apixaban rivaroxaban
 heparin enoxaparin ranitidine famotidine esomeprazole montelukast salbutamol theophylline allopurinol colchicine methotrexate hydroxychloroquine
 levetiracetam phenytoin carbamazepine valproate donepezil memantine quetiapine olanzapine risperidone haloperidol""".split())
-DOSE_RE = re.compile(r"\b(\d+(?:\.\d+)?)\s*(mg|mcg|µg|g|ml|units?|iu)\b", re.I)
+DOSE_RE = re.compile(r"\b(\d+(?:\.\d+)?)\s*(mg|mcg|µg|g|ml|units?|iu|tsf|tbsp)\b", re.I)
 
 
 def _norm_unit(u):

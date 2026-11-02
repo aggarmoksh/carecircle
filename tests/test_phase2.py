@@ -92,7 +92,7 @@ def stub_lab_router(monkeypatch, key="L2"):
     raw = dict(lab=LAB[key]["lab"], report_date=LAB[key]["report_date"],
                tests=[dict(test=t["test"], value=t["value"], unit=t["unit"], range_text=t["range_text"], range_low=t["range_low"], range_high=t["range_high"], printed_flag=t["printed_flag"]) for t in LAB[key]["tests"]])
     monkeypatch.setattr(vision, "prep", lambda src, name: (src, (1, 1)))
-    monkeypatch.setattr(vision, "classify", lambda p, i: ("lab_report", 0.95))
+    monkeypatch.setattr(vision, "classify", lambda p, i: ("lab_report", 0.95, False))
     monkeypatch.setattr(labs, "extract", lambda p, i: labcore.finish(raw))
 
 

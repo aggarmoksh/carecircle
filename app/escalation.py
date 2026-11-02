@@ -80,9 +80,9 @@ def tick(conn, outbox):
             break
         if sent:
             continue
-        if len([c for c in contacted]) >= len(ms) or now >= due + timedelta(hours=config.MISS_AFTER_HOURS):
-            record.add_event(conn, slot, d, "missed", None, None, None, "ladder exhausted" if len(contacted) >= len(ms) else "no one reachable in time", record.iso(now))
-            audit(conn, "dose_missed", None, f"{slot} {d}", "ladder exhausted or nobody reachable in time")
+        if len([c for c in contacted]) >= len(ms) or now >= record.next_dose_due(conn, slot, d):
+            record.add_event(conn, slot, d, "missed", None, None, None, "ladder exhausted" if len(contacted) >= len(ms) else "next dose of the same medicine fell due", record.iso(now))
+            audit(conn, "dose_missed", None, f"{slot} {d}", "ladder exhausted, or the next dose of the same medicine fell due")
             outbox.relay(f"CareCircle: {slot.rsplit('_', 1)[0]} {slot.rsplit('_', 1)[1]} for {config.PATIENT_NAME} is recorded as missed.", [], "state change: dose missed", kind="alert")
         else:
             if not conn.execute("SELECT 1 FROM audit_log WHERE kind='escalation_hold' AND detail=?", (f"{slot} {d} step {k + 1}",)).fetchone():
@@ -91,7 +91,7 @@ def tick(conn, outbox):
 
 
 def settle_missed(conn, now, days=14):
-    """Catch-up for doses nobody confirmed: any occurrence of a confirmed line due more than MISS_AFTER_HOURS ago (and after the line was
+    """Catch-up for doses nobody confirmed: any occurrence of a confirmed line whose next dose of the same medicine has fallen due (and after the line was
     confirmed) with no resolution becomes 'missed' (event + audit line). The live ladder still handles today's and yesterday's doses first;
     this only closes what is left, so a stopped scheduler never leaves past doses 'due' forever. Sends nothing."""
     tz = record.patient_tz(conn)
@@ -104,10 +104,10 @@ def settle_missed(conn, now, days=14):
             for back in range(days + 1):
                 d = today - timedelta(days=back)
                 due = record.due_at(conn, slot, d)
-                if now < due + timedelta(hours=config.MISS_AFTER_HOURS) or (ca is not None and due < ca):
+                if now < record.next_dose_due(conn, slot, d) or (ca is not None and due < ca):
                     continue
                 if record.status_of(conn, slot, d, now) in ("due", "overdue", "not_yet_due"):
                     record.add_event(conn, slot, d, "missed", None, None, None, "no confirmation recorded", record.iso(now))
-                    audit(conn, "dose_missed", None, f"{slot} {d}", "past due with no confirmation when the scheduler ran")
+                    audit(conn, "dose_missed", None, f"{slot} {d}", "next dose fell due with no confirmation when the scheduler ran")
                     n += 1
     return n

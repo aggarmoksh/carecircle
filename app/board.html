@@ -47,7 +47,7 @@ function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in
 const chip=(cls,txt)=>h('span',{class:'chip '+cls},txt||cls.replace('_',' '));
 const WORD={within:"within the lab's printed range",above:"above the lab's printed range",below:"below the lab's printed range",no_range:"no range printed"};
 const RELAY={everything:'every update',duties:'own duties and alerts only',daily:'daily summary at 8 PM',stop:'stopped (until they write)'};
-const SWORD={given:'given',not_yet_due:'not yet due',due:'due, not confirmed',overdue:'overdue',skipped:'skipped',unsure:'unsure',missed:'missed'};
+const SWORD={given:'given',not_yet_due:'not yet due',due:'due, not confirmed',overdue:'overdue, escalating',skipped:'skipped',unsure:'unsure',missed:'missed'};
 function fill(el,...kids){el.replaceChildren(...kids.flat())}
 function render(s){
  $('patient').textContent=s.patient;$('clock').textContent=s.patient_local+' (patient local) · speed x'+s.speed;

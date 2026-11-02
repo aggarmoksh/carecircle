@@ -53,3 +53,7 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 - The tray has 16 compartments; the unlabelled spare row or column is never scored.
 - Lab values are compared only with the range printed on the same report, by code. No words like normal, abnormal, danger, risk, good or bad anywhere in the board or the summary.
 - A member who writes STOP receives nothing (relays, nudges, alerts) until they write again; the escalation ladder skips them and logs why.
+- SAM (for the submission): with the text prompt "pill organizer compartment", SAM 3.1 mapped all 14 compartments on 3 of 4 AI-generated photos but on only 2 of 8 real ice-tray photos (one mask on 6 of them). The product does not call SAM; the submission says Spark judges alone.
+- Missed dose: after due + grace a dose shows "overdue, escalating"; it becomes "missed" when its escalation ladder is exhausted or when the next dose of the same medicine falls due, whichever comes first.
+- Units are kept as printed and never converted (tsf, tbsp, sachet; anything else is "other" with the printed unit). Found on P8 doc 1: "2 TSF" was read as "2.0 mL".
+- Handwriting rule: the classifier sets has_handwriting; on a handwritten document every medicine line is marked unsure whatever the per-line legibility, so a member confirms each name before YES.
