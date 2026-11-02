@@ -1,6 +1,6 @@
-# Phase 3 report (live run pending)
+# Phase 3 report (final)
 
-Status: everything is built, tested and scored except the one live run on real phones. The Cloudflare quick tunnel from Phase 2 no longer resolves (DNS failure, curl exit 6). I tried to start a new tunnel and the sandbox refused permission, so I stopped there and did not work around it. The server is up on port 8000 with data/live3.db (fresh demo reset, every member's choice "everything"). The live run needs a new tunnel and the Twilio sandbox webhook URL re-saved.
+Status: all items done, including the live run (second round of advisor decisions applied: units, handwriting rule, missed-dose rule, P8 rescore, SAM note).
 
 ## Pre-registration (hashes, first 16 hex)
 | File | Commit | sha256 |
@@ -26,8 +26,14 @@ Deviation log: the photos in media/organiser_real are or1..or8, not the r1..r5 p
 | Lab graphics | screenshots below |
 | Relay choice | unit tests for everything, duties, daily and stop (each through the router), stop skipped in the ladder with the reason logged, urgent alert skipped for STOP, writing again ends STOP, board shows each choice |
 | Missed dose | tests plus screenshots: past doses show "missed" on the board and in the summary after a scheduler run; the board ladder shows only today's open doses |
-| Live run | NOT DONE (tunnel down, see top) |
-| Outbound count (live) | 0 of cap 40 so far (counter file data/outbound_phase3.json) |
+| Live run | DONE: r2 sent "only my duties and alerts" (relay_pref duties); r3 asked a medical question (saved as a task, fixed reply), then "I will": the task-owner relay to r2 was NOT sent and is logged as relay_suppressed ("member chose only duties and alerts; relay not sent"). m1 got it queued (asleep), m4/m5 are simulated |
+| Outbound count (live) | 4 of cap 40 real WhatsApp sends (data/outbound_phase3.json) |
+| Unit preservation test | pass (2 TSF stays tsf; unknown unit kept via unit_as_printed) |
+| Handwriting rule test | pass (every line unsure on a handwritten sheet; YES blocked until each name is retyped) |
+| Missed-dose rule | pass: "overdue, escalating" after grace; missed when the ladder is exhausted or the next dose of the same medicine falls due (test_escalation unchanged) |
+| P1-screen after unit/handwriting change | 78/78 |
+| Router eval after classify change | run 1: 18/19 (voice v05 routed record_question instead of dose_update, no code on that path touched), run 2: 19/19; medical 10/10, record 8/8 both runs |
+| Unit tests | 55 passed |
 
 ## P3-real (8 photos, tests/organiser_real_labels_v2.json, 14 labelled compartments each)
 | Photo | Spark alone | SAM masks | All 14 mapped | SAM pipeline | Pipeline minus alone |
@@ -53,7 +59,21 @@ Scoring tool: tools/doc_score.py. Rule fixed before any run: normalised match, o
 | 3 | printed | 8 | 8 | 8 | 0 | 0 | 0 | 0 | 0 |
 | 4 | handwritten | 3 | 2 | 0 | 0 | 3 | 0 | 0 | 2 |
 
-Target: printed docs (1, 3) 0 confidently wrong. Doc 1 has 2, so this is a miss. Handwritten docs (2, 4) <= 1 in total: 0, met. No prompt change was made after seeing results. Worth knowing: on the handwritten docs the model marked 4 lines unsure (they would show with "?" and need a retyped name) but none matched a label name; doc 2 has one clear line that matches no label (counted as invented, which is outside the stated target); doc 4 dropped all 3 label medicines.
+Target: printed docs (1, 3) 0 confidently wrong. Doc 1 has 2, so this is a miss. Cause found: doc 1's "2 TSF" dose was extracted as 2.0 mL because the unit enum had no teaspoon (fixed, see below).
+
+### Rescore with the advisor's post-hoc corrected labels (saved extractions, no new API calls)
+The corrected file fixes clerical errors: the labels of docs 2 and 4 had been swapped, two spelling typos on doc 1, and one medicine missing from doc 4's labels. Pre-registered score is the result above; the corrected score is a post-hoc reading and is reported alongside it, not instead of it.
+| Doc | Scoring | Label medicines | Found | Unsure-flagged | Dropped | Confidently wrong | Invented |
+|---|---|---|---|---|---|---|---|
+| 1 | pre-registered | 7 | 5 | 0 | 2 | 2 | 0 |
+| 1 | corrected | 7 | 7 | 0 | 0 | 0 | 0 |
+| 2 | pre-registered | 1 | 0 | 0 | 1 | 0 | 1 |
+| 2 | corrected | 3 | 0 | 1 | 2 | 1 | 0 |
+| 3 | pre-registered | 8 | 8 | 0 | 0 | 0 | 0 |
+| 3 | corrected | 8 | 8 | 0 | 0 | 0 | 0 |
+| 4 | pre-registered | 3 | 0 | 0 | 3 | 0 | 0 |
+| 4 | corrected | 2 | 0 | 1 | 1 | 0 | 0 |
+Corrected: printed docs 0 confidently wrong (target met); handwritten docs 1 in total (target <= 1, met). That one line was returned as clear on a handwritten sheet; under the new handwriting rule it would be shown as "?". Extraction was not re-run, so that rule is covered by a unit test, not by a new P8 run. Handwritten docs (2, 4) <= 1 in total: 0, met. No prompt change was made after seeing results. Worth knowing: on the handwritten docs the model marked 4 lines unsure (they would show with "?" and need a retyped name) but none matched a label name; doc 2 has one clear line that matches no label (counted as invented, which is outside the stated target); doc 4 dropped all 3 label medicines.
 
 ## Lab graphics
 Board lab section: outputs/board_labs_p3.png (full board: outputs/board_p3_full.png). Doctor summary page: outputs/summary_p3.png. Per test: the printed range as a band; a value marker (triangle up = above, triangle down = below, circle = within); status in words and a shape; one-sided ranges open-ended with an arrow; no bar when no range is printed; out-of-range tests first under "N of M outside the lab's printed range"; a trend with the printed band when a test is in two or more reports. A test scans the board, the summary and board.html for normal, abnormal, danger, risk, good and bad (none found). The screenshots use a synthetic demo DB (tools/make_shots_db.py) with an invented earlier report so a trend shows.
@@ -64,8 +84,15 @@ Board lab section: outputs/board_labs_p3.png (full board: outputs/board_p3_full.
 - Missed dose: when the scheduler runs, any unconfirmed dose more than 12 hours past due becomes "missed" (event plus audit line; no messages for the catch-up). The live ladder still handles today and yesterday first. I read "past due plus grace" as "after the ladder had its chance", because marking missed at due plus grace would remove the nudges the Phase 1 escalation tests require. Say if you want it earlier.
 - Demo reset: tools/demo_reset.py (fictional seed, schedule not confirmed, clock target 07:55 patient-local, every choice "everything", prints /board?token=<BOARD_TOKEN>). Run on a fresh database for the live DB. A running server's clock is moved through the admin endpoint if ADMIN_TOKEN is set; otherwise start the server with the printed CC_START_TIME.
 
+## Round 2 changes (advisor, 2026-11-01 21:55 PT)
+- Units kept as printed, never converted: enum adds tsf, tbsp, sachet, other (+ unit_as_printed). The guard also recognises tsf and tbsp.
+- Handwriting: classifier returns has_handwriting; on a handwritten sheet every line is unsure, so a member retypes each name before YES.
+- Missed dose: replaces my earlier 12-hour reading (the 12 h constant is removed). Board label for the stage between grace and missed: "overdue, escalating".
+- SAM note recorded in CLAUDE.md and FRICTION_LOG.md (3 of 4 AI photos, 2 of 8 real photos).
+
 ## Caveats and skipped
-- Live run not done (top). P1-paper skipped.
+- Live run note: r3's task-owner confirmation and the m4/m5 copies were replaced by the guard's fallback sentence, because the fresh demo record has no confirmed schedule and "metformin" is therefore not an allowed name. The guard worked as designed; r2's suppression was logged before that.
+- P1-paper skipped (advisor).
 - One Phase 2 assertion changed: test_board_state_and_charts used the old lab_charts field, which the server-built graphics replace.
 - The outbound scan (own regexes) over every saved text, including this phase's eval run, found 0 medicine names, doses or lab values outside the record.
 - Private extraction spend (4 calls) is not logged in the repo. Logged spend this phase is about $0.91; total across phases about $3.03.
@@ -73,4 +100,4 @@ Board lab section: outputs/board_labs_p3.png (full board: outputs/board_p3_full.
 - The SAM overlay code remains in app/vision.py but is no longer called.
 
 ## Commits
-d60ea78 (organiser_real and paper labels), e8348a1 (organiser_real_labels_v2), 5a902f8 (backend), 83c9f7c (P3-real decision, tools), report commit follows.
+d60ea78 (organiser_real and paper labels), e8348a1 (organiser_real_labels_v2), 5a902f8 (backend), 83c9f7c (P3-real decision, tools), 489ba50 (report), ec1fd8f (round 2 fixes), final report commit follows.
