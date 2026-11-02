@@ -1,0 +1,153 @@
+{
+  "written_by_user": true,
+  "timestamp": "2026-11-01T09:40:00Z",
+  "_authorship": "Written by the advisor on 2026-11-01 from the fictional sheets; d1 and d2 match labels.json; d3 is the paper version: Ibuprofen crossed out in pen with STOP beside it (must NOT be extracted), paracetamol handwritten in pen (must be extracted). Labs L1 and L2 printed from the same document as tests/lab_labels.json and scored against it.",
+  "sheets": {
+    "d1": {
+      "meds": [
+        {
+          "name": "metformin",
+          "dose_amount": 500,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        },
+        {
+          "name": "amlodipine",
+          "dose_amount": 5,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "08:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "aspirin",
+          "dose_amount": 75,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "08:00"
+          ],
+          "with_food": "yes",
+          "notes": ""
+        },
+        {
+          "name": "atorvastatin",
+          "dose_amount": 20,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [
+            "20:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        }
+      ]
+    },
+    "d2": {
+      "meds": [
+        {
+          "name": "telmisartan",
+          "dose_amount": 40,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "yes",
+          "notes": "printed as 1-0-0"
+        },
+        {
+          "name": "glimepiride",
+          "dose_amount": 1,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [],
+          "with_food": "no",
+          "notes": "BD before food"
+        },
+        {
+          "name": "pantoprazole",
+          "dose_amount": 40,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "no",
+          "notes": "OD before breakfast"
+        },
+        {
+          "name": "clopidogrel",
+          "dose_amount": 75,
+          "dose_unit": "mg",
+          "frequency": "once_daily",
+          "times": [],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "calcium carbonate",
+          "dose_amount": 500,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [],
+          "with_food": "yes",
+          "notes": "BD after food"
+        }
+      ]
+    },
+    "d3": {
+      "meds": [
+        {
+          "name": "levothyroxine",
+          "dose_amount": 50,
+          "dose_unit": "mcg",
+          "frequency": "once_daily",
+          "times": [
+            "06:00"
+          ],
+          "with_food": "no",
+          "notes": "empty stomach"
+        },
+        {
+          "name": "metoprolol",
+          "dose_amount": 25,
+          "dose_unit": "mg",
+          "frequency": "twice_daily",
+          "times": [
+            "08:00",
+            "20:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "insulin glargine",
+          "dose_amount": 10,
+          "dose_unit": "units",
+          "frequency": "at_bedtime",
+          "times": [
+            "22:00"
+          ],
+          "with_food": "unspecified",
+          "notes": ""
+        },
+        {
+          "name": "paracetamol",
+          "dose_amount": 500,
+          "dose_unit": "mg",
+          "frequency": "as_needed",
+          "times": [],
+          "with_food": "unspecified",
+          "notes": "handwritten: SOS for pain"
+        }
+      ]
+    }
+  },
+  "labs_scored_against": "tests/lab_labels.json"
+}
