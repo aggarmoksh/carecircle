@@ -23,6 +23,15 @@ def member(conn, mid):
     return dict(r) if r else None
 
 
+PREFS = {"everything": "every update", "duties": "only your own duties and alerts", "daily": "one summary a day at 8 PM plus alerts", "stop": "no messages until you write again"}
+
+
+def set_relay_pref(conn, mid, pref):
+    assert pref in PREFS
+    conn.execute("UPDATE members SET relay_pref=? WHERE id=?", (pref, mid))
+    conn.commit()
+
+
 def local_time(m, now):
     return now.astimezone(ZoneInfo(m["tz"]))
 
@@ -59,7 +68,7 @@ def period_of(slot):
 def lines(conn, status):
     rows = conn.execute(
         "SELECT l.id lid, l.times_json, l.status, l.source_doc_id, l.confirmed_at, m.id mid, m.name, m.dose_amount, m.dose_unit, "
-        "m.frequency, m.with_food, m.notes FROM schedule_lines l JOIN medications m ON m.id=l.med_id "
+        "m.frequency, m.with_food, m.notes, m.name_as_printed, m.generic_if_printed, m.legibility FROM schedule_lines l JOIN medications m ON m.id=l.med_id "
         "WHERE l.status=? ORDER BY l.id", (status,)).fetchall()
     out = []
     for r in rows:
@@ -82,8 +91,9 @@ def add_draft(conn, doc_id, meds, now_iso):
         conn.execute("DELETE FROM schedule_lines WHERE id=?", (old["id"],))
         conn.execute("DELETE FROM medications WHERE id=?", (old["med_id"],))
     for m in meds:
-        cur = conn.execute("INSERT INTO medications(name,dose_amount,dose_unit,frequency,with_food,notes) VALUES(?,?,?,?,?,?)",
-                           (m["name"].strip().lower(), float(m["dose_amount"]), m["dose_unit"], m["frequency"], m["with_food"], m.get("notes", "")))
+        cur = conn.execute("INSERT INTO medications(name,dose_amount,dose_unit,frequency,with_food,notes,name_as_printed,generic_if_printed,legibility) VALUES(?,?,?,?,?,?,?,?,?)",
+                           (m["name"].strip().lower(), float(m["dose_amount"]), m["dose_unit"], m["frequency"], m["with_food"], m.get("notes", ""),
+                            m.get("name_as_printed", ""), m.get("generic_if_printed", ""), m.get("legibility", "clear")))
         conn.execute("INSERT INTO schedule_lines(med_id,times_json,status,source_doc_id,created_at) VALUES(?,?,?,?,?)",
                      (cur.lastrowid, json.dumps(sorted(m["times"])), "draft", doc_id, now_iso))
     conn.commit()
@@ -94,8 +104,13 @@ def draft_summary(conn):
     for i, l in enumerate(lines(conn, "draft"), 1):
         t = ", ".join(l["times"]) if l["times"] else "no clock time printed"
         food = {"yes": "with food", "no": "before food", "unspecified": ""}[l["with_food"]]
-        out.append(f"{i}. {l['name']} {fmt_dose(l['dose_amount'], l['dose_unit'])}, {l['frequency'].replace('_', ' ')}, {t}" + (f", {food}" if food else ""))
+        out.append(f"{i}. " + ("? " if l["legibility"] == "unsure" else "") + f"{l['name']} {fmt_dose(l['dose_amount'], l['dose_unit'])}, {l['frequency'].replace('_', ' ')}, {t}" + (f", {food}" if food else ""))
     return out
+
+
+def unsure_lines(conn):
+    """1-based numbers of draft lines the extraction marked unsure and nobody has corrected yet."""
+    return [i for i, l in enumerate(lines(conn, "draft"), 1) if l["legibility"] == "unsure"]
 
 
 def confirm_drafts(conn, by, now_iso):
@@ -124,6 +139,8 @@ def apply_ops(conn, ops):
             conn.execute("DELETE FROM schedule_lines WHERE id=?", (l["lid"],))
         elif f in ("name", "dose_unit", "frequency", "with_food", "notes"):
             conn.execute(f"UPDATE medications SET {f}=? WHERE id=?", (str(v).strip().lower() if f == "name" else v, l["mid"]))
+            if f == "name":  # the member typed the name: it is no longer a guess
+                conn.execute("UPDATE medications SET legibility='clear' WHERE id=?", (l["mid"],))
         elif f == "dose_amount":
             conn.execute("UPDATE medications SET dose_amount=? WHERE id=?", (float(v), l["mid"]))
         else:

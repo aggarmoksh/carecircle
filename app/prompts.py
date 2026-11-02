@@ -15,13 +15,18 @@ EXTRACT_SCHEMA = {"name": "discharge_sheet", "schema": {
     "type": "object", "additionalProperties": False, "required": ["meds"],
     "properties": {"meds": {"type": "array", "items": {
         "type": "object", "additionalProperties": False,
-        "required": ["name", "dose_amount", "dose_unit", "frequency", "times", "with_food", "notes"],
-        "properties": {"name": {"type": "string"}, "dose_amount": {"type": "number"}, "dose_unit": {"type": "string", "enum": DOSE_UNITS},
+        "required": ["name", "name_as_printed", "generic_if_printed", "legibility", "dose_amount", "dose_unit", "frequency", "times", "with_food", "notes"],
+        "properties": {"name": {"type": "string"}, "name_as_printed": {"type": "string"}, "generic_if_printed": {"type": "string"},
+                       "legibility": {"type": "string", "enum": ["clear", "unsure"]}, "dose_amount": {"type": "number"}, "dose_unit": {"type": "string", "enum": DOSE_UNITS},
                        "frequency": {"type": "string", "enum": FREQS}, "times": {"type": "array", "items": {"type": "string"}},
                        "with_food": {"type": "string", "enum": FOOD}, "notes": {"type": "string"}}}}}}}
 EXTRACT_PROMPT = (
     "This is a photo of a fictional discharge sheet. Extract every medicine listed on it as structured data. "
-    "Rules: name = generic drug name exactly as printed, lowercase. dose_amount = number only. "
+    "Rules: name = generic drug name exactly as printed, lowercase (if only a brand is printed, copy the brand as printed). "
+    "name_as_printed = the medicine name exactly as written on the sheet, including a brand name. generic_if_printed = the generic name only if the sheet prints one "
+    "next to the brand, otherwise an empty string; never fill it from your own knowledge. "
+    "legibility = clear if you can read the name, dose and frequency with confidence, otherwise unsure (handwriting, smudges, cut-off text). "
+    "dose_amount = number only. "
     "times = clock times in HH:MM 24h ONLY if the sheet prints clock times; otherwise an empty list. Never invent or infer times. "
     "with_food: yes = with or after food; no = before food or empty stomach; unspecified = the sheet says nothing. "
     "A medicine that is crossed out or marked STOP is not listed. notes = any extra instruction text as printed. "

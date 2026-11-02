@@ -38,7 +38,22 @@ def connect(path=None):
     if p != ":memory:":
         conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript(SCHEMA)
+    _add_columns(conn)
     return conn
+
+
+MIGRATIONS = [("members", "relay_pref", "TEXT DEFAULT 'everything'"), ("medications", "name_as_printed", "TEXT DEFAULT ''"),
+              ("medications", "generic_if_printed", "TEXT DEFAULT ''"), ("medications", "legibility", "TEXT DEFAULT 'clear'")]
+
+
+def _add_columns(conn):
+    for table, col, decl in MIGRATIONS:
+        if col not in [r[1] for r in conn.execute(f"PRAGMA table_info({table})")]:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+            except Exception:  # another connection added it first
+                pass
+    conn.commit()
 
 
 def audit(conn, kind, actor=None, detail=None, reason=None, at=None):

@@ -58,6 +58,8 @@ def ticker():
 @app.on_event("startup")
 def startup():
     init_if_empty()
+    if os.environ.get("CC_START_TIME"):  # demo start (printed by tools/demo_reset.py)
+        clock.set(datetime.fromisoformat(os.environ["CC_START_TIME"].replace("Z", "+00:00")), speed=1)
     if os.environ.get("CC_TICKER", "1") == "1":
         threading.Thread(target=ticker, daemon=True).start()
 

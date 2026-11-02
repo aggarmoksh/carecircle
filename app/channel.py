@@ -15,7 +15,7 @@ OUT = ROOT / "outputs"
 OUT.mkdir(exist_ok=True)
 SIM_INBOX = OUT / "sim_inbox.jsonl"
 DRYRUN_OUTBOX = OUT / "dryrun_outbox.jsonl"
-COUNTER = ROOT / "data" / os.environ.get("CC_COUNTER_FILE", "outbound_phase2.json")
+COUNTER = ROOT / "data" / os.environ.get("CC_COUNTER_FILE", "outbound_phase3.json")
 _lock = threading.Lock()
 
 

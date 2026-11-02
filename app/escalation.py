@@ -54,7 +54,9 @@ def tick(conn, outbox):
         for m in _ladder(conn, slot):
             if m["id"] in contacted:
                 continue
-            if not record.awake(m, now):
+            if m.get("relay_pref") == "stop":
+                why = "chose STOP (no messages until they write again)"
+            elif not record.awake(m, now):
                 why = f"asleep (local {record.local_time(m, now).strftime('%H:%M')})"
             elif not record.window_open(m, now):
                 why = "24h window closed (template required)"
@@ -81,7 +83,31 @@ def tick(conn, outbox):
         if len([c for c in contacted]) >= len(ms) or now >= due + timedelta(hours=config.MISS_AFTER_HOURS):
             record.add_event(conn, slot, d, "missed", None, None, None, "ladder exhausted" if len(contacted) >= len(ms) else "no one reachable in time", record.iso(now))
             audit(conn, "dose_missed", None, f"{slot} {d}", "ladder exhausted or nobody reachable in time")
-            outbox.relay(f"CareCircle: {slot.rsplit('_', 1)[0]} {slot.rsplit('_', 1)[1]} for {config.PATIENT_NAME} is recorded as missed.", [], "state change: dose missed")
+            outbox.relay(f"CareCircle: {slot.rsplit('_', 1)[0]} {slot.rsplit('_', 1)[1]} for {config.PATIENT_NAME} is recorded as missed.", [], "state change: dose missed", kind="alert")
         else:
             if not conn.execute("SELECT 1 FROM audit_log WHERE kind='escalation_hold' AND detail=?", (f"{slot} {d} step {k + 1}",)).fetchone():
                 audit(conn, "escalation_hold", None, f"{slot} {d} step {k + 1}", "nobody awake or reachable now; holding and retrying")
+    settle_missed(conn, now)
+
+
+def settle_missed(conn, now, days=14):
+    """Catch-up for doses nobody confirmed: any occurrence of a confirmed line due more than MISS_AFTER_HOURS ago (and after the line was
+    confirmed) with no resolution becomes 'missed' (event + audit line). The live ladder still handles today's and yesterday's doses first;
+    this only closes what is left, so a stopped scheduler never leaves past doses 'due' forever. Sends nothing."""
+    tz = record.patient_tz(conn)
+    today = now.astimezone(tz).date()
+    n = 0
+    for l in record.lines(conn, "confirmed"):
+        ca = _confirmed_at(l)
+        for t in l["times"]:
+            slot = f"{l['name']}_{t}"
+            for back in range(days + 1):
+                d = today - timedelta(days=back)
+                due = record.due_at(conn, slot, d)
+                if now < due + timedelta(hours=config.MISS_AFTER_HOURS) or (ca is not None and due < ca):
+                    continue
+                if record.status_of(conn, slot, d, now) in ("due", "overdue", "not_yet_due"):
+                    record.add_event(conn, slot, d, "missed", None, None, None, "no confirmation recorded", record.iso(now))
+                    audit(conn, "dose_missed", None, f"{slot} {d}", "past due with no confirmation when the scheduler ran")
+                    n += 1
+    return n

@@ -2,9 +2,11 @@
 import html, json
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from . import config, record, labs
+from . import config, record, labs, labviz
 from .clock import clock
 
+LABCSS = (".labrep{margin:10px 0 16px}.labrep h3{font-size:14px;margin:0 0 2px}.lsum{margin:2px 0 6px}.lt td{vertical-align:middle}.lt tr.above td,.lt tr.below td{font-weight:600}"
+          ".ico{display:inline-block;width:1.2em;text-align:center}.rbar text,.trend text{font-size:10px;fill:#5b6573}.trendbox{display:inline-block;width:350px;margin:8px 14px 8px 0;vertical-align:top}.mut{color:#5b6573}")
 FOOTER = "Prepared by CareCircle from records kept by the family. Not medical advice."
 CITY = lambda tz: tz.split("/")[-1].replace("_", " ")
 
@@ -27,7 +29,10 @@ def _organiser(conn, now):
 
 def _ladder(conn, now, ms):
     out = []
+    today = now.astimezone(record.patient_tz(conn)).date()
     for slot, d in record.open_occurrences(conn, now):
+        if d != today:
+            continue
         steps = [dict(at=e["at"], who=_name(ms, e["actor"]), kind=e["type"], note=e["note"]) for e in record.events(conn, slot, d) if e["type"] in ("nudged", "escalated")]
         skips = []
         for r in conn.execute("SELECT actor, detail, at FROM audit_log WHERE kind='escalation_skip' AND detail LIKE ?", (f"{slot} {d}:%",)):
@@ -42,7 +47,8 @@ def state(conn, now=None):
     tz = record.patient_tz(conn)
     today = now.astimezone(tz).date()
     members = [dict(id=m["id"], name=m["name"], relationship=m["relationship"], role=m["role"], simulated=m["kind"] == "sim", city=CITY(m["tz"]),
-                    local=record.local_time(m, now).strftime("%H:%M"), awake=record.awake(m, now)) for m in ms.values()]
+                    local=record.local_time(m, now).strftime("%H:%M"), awake=record.awake(m, now),
+                    relay=m.get("relay_pref") or "everything") for m in ms.values()]
     doses = []
     for s in sorted(record.slots(conn), key=lambda s: s.rsplit("_", 1)[1]):
         st = record.status_of(conn, s, today, now)
@@ -56,17 +62,12 @@ def state(conn, now=None):
     reps = labs.live_reports(conn)
     lab_out = [dict(id=r["id"], lab=r["lab"], date=r["report_date"], confirmed_by=_name(ms, r["confirmed_by"]),
                     tests=[dict(test=t["test"], value=t["value"], unit=t["unit"], range_text=t["range_text"], status=t["status"], flag=t["printed_flag"]) for t in r["tests"]]) for r in reps]
-    series = {}
-    for r in reps:
-        for t in r["tests"]:
-            series.setdefault(t["test"], []).append(dict(date=r["report_date"], value=t["value"], unit=t["unit"], status=t["status"]))
-    charts = {k: v for k, v in series.items() if len(v) >= 2}
     last = reps[-1] if reps else None
     tasks = [dict(id=r["id"], text=r["text"], owner=_name(ms, r["owner"]) if r["owner"] else None) for r in conn.execute("SELECT * FROM tasks WHERE status='open' ORDER BY id")]
     log = [dict(at=r["at"], kind=r["kind"], actor=r["actor"], detail=(r["detail"] or "")[:160], reason=r["reason"]) for r in conn.execute("SELECT at,kind,actor,detail,reason FROM audit_log ORDER BY id DESC LIMIT 20")]
     return dict(now=record.iso(now), patient=config.PATIENT_NAME, patient_local=now.astimezone(tz).strftime("%a %d %b %H:%M"), speed=clock.speed,
                 members=members, schedule=sched, doses=doses, ladder=_ladder(conn, now, ms), organiser=_organiser(conn, now),
-                labs=lab_out, lab_charts=charts, lab_latest=dict(date=last["report_date"], out_of_range=len(labs.out_of_range(last["tests"]))) if last else None,
+                labs=lab_out, lab_html=labviz.section_html(reps), lab_latest=dict(date=last["report_date"], out_of_range=len(labs.out_of_range(last["tests"]))) if last else None,
                 tasks=tasks, audit=log)
 
 
@@ -107,10 +108,10 @@ def doctor_html(conn, start, end, now=None):
     reps = labs.live_reports(conn)
     tasks = [r for r in conn.execute("SELECT * FROM tasks WHERE status='open' ORDER BY id")]
     notes = [(l["name"], l["notes"]) for l in record.lines(conn, "confirmed") if l["notes"]]
-    notes += [(f"{e_['slot'].rsplit('_', 1)[0]} {e_['due_date']}", e_["note"]) for e_ in conn.execute("SELECT slot,due_date,note FROM dose_events WHERE note IS NOT NULL AND note NOT LIKE 'step %' AND due_date BETWEEN ? AND ? ORDER BY id", (str(start), str(end)))]
+    notes += [(f"{e_['slot'].rsplit('_', 1)[0]} {e_['due_date']}", e_["note"]) for e_ in conn.execute("SELECT slot,due_date,note FROM dose_events WHERE note IS NOT NULL AND note NOT LIKE 'step %' AND type != 'missed' AND due_date BETWEEN ? AND ? ORDER BY id", (str(start), str(end)))]
     h = [f"<!doctype html><html><head><meta charset='utf-8'><title>Doctor summary</title><style>"
          "body{font:15px/1.45 system-ui,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;color:#111}h1{font-size:22px;margin:0}h2{font-size:16px;margin:22px 0 6px;border-bottom:1px solid #999}"
-         "table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:4px 8px;text-align:left;font-size:14px}th{background:#eee}"
+         "table{border-collapse:collapse;width:100%}td,th{border:1px solid #bbb;padding:4px 8px;text-align:left;font-size:14px}th{background:#eee}" + LABCSS +
          ".foot{margin-top:28px;font-size:13px;color:#333;border-top:1px solid #999;padding-top:8px}.noprint{margin-bottom:12px}@media print{.noprint{display:none}}</style></head><body>"
          f"<div class='noprint'><button onclick='window.print()'>Print</button></div>"
          f"<h1>Care summary for {e(config.PATIENT_NAME)}</h1><div>Period: {start:%d %b %Y} to {end:%d %b %Y}</div>"]
@@ -121,13 +122,9 @@ def doctor_html(conn, start, end, now=None):
              "".join(f"<tr><td>{m['date']}</td><td>{e(m['medicine'])} {m['time']}</td><td>{e(m['status'])}</td><td>{e(m['reason'])}</td><td>{e(m['by'] or '')}</td></tr>" for m in misses) + "</table>" if misses else "<div>None.</div>")
     h.append("<h2>Notes</h2>" + ("<ul>" + "".join(f"<li>{e(a)}: {e(b)}</li>" for a, b in notes) + "</ul>" if notes else "<div>None.</div>"))
     h.append("<h2>Lab values with the lab's printed ranges</h2>")
-    for r in reps:
-        h.append(f"<div><b>{e(r['lab'])}, {labs.pretty_date(r['report_date'])} {r['report_date'][:4]}</b></div><table><tr><th>Test</th><th>Value</th><th>Unit</th><th>Printed range</th><th>Status</th></tr>")
-        for t in r["tests"]:
-            stt = {"within": "within the lab's printed range", "above": "above the lab's printed range", "below": "below the lab's printed range", "no_range": "no range printed"}[t["status"]]
-            h.append(f"<tr><td>{e(t['test'])}</td><td>{labs.fmt_num(t['value'])}</td><td>{e(t['unit'])}</td><td>{e(t['range_text'] or '')}</td><td>{stt}</td></tr>")
-        h.append("</table>")
-    if not reps:
+    if reps:
+        h.append(labviz.section_html(reps))
+    else:
         h.append("<div>No lab reports on record.</div>")
     h.append("<h2>Open tasks for the doctor visit</h2>" + ("<ul>" + "".join(f"<li>{e(r['text'])} (owner: {e(_name(ms, r['owner'])) if r['owner'] else 'nobody yet'})</li>" for r in tasks) + "</ul>" if tasks else "<div>None.</div>"))
     h.append(f"<div class='foot'>{e(FOOTER)}</div></body></html>")

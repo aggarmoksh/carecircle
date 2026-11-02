@@ -8,7 +8,8 @@ from .db import audit
 from .outbox import FIXED_MEDICAL, FIXED_URGENT, FIXED_LAB
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-INTENTS = ["dose_update", "record_question", "correction", "volunteer", "medical_question", "urgent_symptom", "other"]
+INTENTS = ["dose_update", "record_question", "correction", "volunteer", "medical_question", "urgent_symptom", "relay_choice", "other"]
+STOP_RX = re.compile(r"\s*stop\s*[.!]*\s*", re.I)
 YES = {"yes", "y", "yes please", "yeah", "yep", "yes start", "yes thanks"}
 TYPE_WORDS = [("discharge_sheet", r"discharge"), ("prescription", r"prescri"), ("pill_organiser", r"organi[sz]er|pill ?box|pill ?organi"), ("lab_report", r"\blab\b|report|blood test|results?")]
 HELP = "I can log doses, answer questions from the care record, or save a photo of a discharge sheet, pill organiser or lab report."
@@ -23,8 +24,17 @@ INTENT_PROMPT = (
     "- volunteer: offers to take a task (e.g. 'I will', 'I can take that').\n"
     "- medical_question: asks for medical advice or information (doses, interactions, what a medicine is for, whether something is safe, whether a value is bad or dangerous, what a value or a result means, what a condition or an organ is doing).\n"
     "- urgent_symptom: describes a person currently having a worrying or emergency symptom (chest pain, confusion, collapse, difficulty breathing).\n"
+    "- relay_choice: says how many updates from the app they want: every update, only their own duties and alerts, one daily summary at 8 PM, or that they want the messages to stop.\n"
     "- other: anything else.\n"
     "A draft schedule is {draft} awaiting confirmation. Message: \"{text}\"")
+
+CHOICE_SCHEMA = {"name": "relay_choice", "schema": {"type": "object", "additionalProperties": False, "required": ["choice"],
+                 "properties": {"choice": {"type": "string", "enum": ["everything", "duties", "daily", "stop"]}}}}
+CHOICE_PROMPT = ("A circle member is choosing how many updates they get from the care app. Choose exactly one: everything (send me everything / every update), "
+                 "duties (only my own duties and alerts), daily (one daily summary at 8 PM), stop (stop all messages). Message: \"{text}\"")
+CHOICE_REPLY = {"everything": "Okay, I'll send you every update.", "duties": "Okay, you'll get only your own duties and alerts.",
+                "daily": "Okay, you'll get one summary a day at 8 PM your time, plus alerts about missed doses.",
+                "stop": "Okay, I've stopped all messages to you. Write to me any time to start again."}
 
 PARSE_SCHEMA = lambda slots: {"name": "confirmation", "schema": {"type": "object", "additionalProperties": False, "required": ["actor", "slot", "action"], "properties": {
     "actor": {"type": "string", "enum": ["m1", "m2", "m3", "m4", "m5", "patient"]},
@@ -64,6 +74,9 @@ def handle(conn, ob, mid, text=None, media=None):
     """media: {'path': str, 'mime': str}. Returns {'route','type','intent','replies'} for reporting and tests."""
     now = clock.now()
     record.touch_inbound(conn, mid, now)
+    if (record.member(conn, mid).get("relay_pref") or "everything") == "stop":  # writing again ends STOP
+        record.set_relay_pref(conn, mid, "everything")
+        audit(conn, "relay_pref", mid, "everything", "member wrote again, so STOP ended")
     n0 = len(ob.sent)
     kind = "text" if not media else media["mime"].split("/")[0]
     audit(conn, "inbound", mid, {"kind": kind, "text": text if not media else None})
@@ -109,6 +122,8 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
         extra = ""
         if any(not l["times"] for l in record.lines(conn, "draft")):
             extra = "\nSome lines have no clock time printed; tell me the time for each (for example 'line 2 at 08:00') before they can start."
+        if record.unsure_lines(conn):
+            extra += "\nLines marked ? are hard to read. Please type the correct name for each (for example 'line 2 is metformin') before I can start."
         audit(conn, "draft_created", mid, {"doc": doc, "lines": len(summ)}, "extraction saved as draft; nothing live until a member says YES")
         _send(ob, mid, "Here's what I read:\n" + "\n".join(summ) + extra + "\nReply YES to start this schedule, or tell me what's wrong.", "draft summary sent for confirmation")
     elif typ == "pill_organiser":
@@ -188,19 +203,26 @@ def _text(conn, ob, mid, text, via="text"):
         _send(ob, mid, f"Saved. The lab report from {when} is now in the care record.", "YES received for lab report")
         ob.relay(f"{nm(conn, mid)} added a lab report from {when}: {len(oor)} values are outside the lab's printed range. See the board.", [mid], "state change: lab report added")
         return "yes_lab"
+    if has_draft and low in YES and record.unsure_lines(conn):
+        nums = record.unsure_lines(conn)
+        audit(conn, "yes_blocked", mid, f"unsure lines {nums}", "YES refused: a line is marked ? and needs the correct name")
+        _send(ob, mid, f"Not started yet: line {', '.join(map(str, nums))} {'is' if len(nums) == 1 else 'are'} marked ?. Please type the correct name (for example 'line {nums[0]} is metformin'), or tell me to remove it.", "YES blocked by unsure line")
+        return "yes_blocked"
     if has_draft and low in YES:
-
         n = record.confirm_drafts(conn, mid, record.iso(now))
         audit(conn, "schedule_confirmed", mid, {"lines": n}, "member said YES")
         left = len(record.lines(conn, "draft"))
         _send(ob, mid, f"Schedule started: {n} medicine(s) are now live." + (f" {left} line(s) still need a time." if left else "") + " I'll check in on each dose.", "YES received")
         ob.relay(f"{nm(conn, mid)} confirmed the schedule for {config.PATIENT_NAME}: {n} medicine(s) are now live.", [mid], "state change: schedule confirmed")
         return "yes"
+    if STOP_RX.fullmatch(text):
+        _set_pref(conn, ob, mid, "stop", text)
+        return "relay_choice"
     intent, _, _ = llm.spark_json("phase1", "intent", [{"role": "user", "content": INTENT_PROMPT.format(draft="pending" if has_draft else "not pending", text=text)}], INTENT_SCHEMA)
     intent = intent["intent"]
     audit(conn, "intent", mid, {"intent": intent, "via": via}, "classified by model; routing is code")
     {"dose_update": _dose, "record_question": _qa, "correction": _correction, "volunteer": _volunteer,
-     "medical_question": _medical, "urgent_symptom": _urgent}.get(intent, _other)(conn, ob, mid, text, now)
+     "medical_question": _medical, "urgent_symptom": _urgent, "relay_choice": _relay_choice}.get(intent, _other)(conn, ob, mid, text, now)
     return intent
 
 
@@ -293,10 +315,23 @@ def _urgent(conn, ob, mid, text, now):
         if m["id"] == mid:
             continue
         alert = f"URGENT: {nm(conn, mid)} reported a worrying symptom for {config.PATIENT_NAME} and was told to call emergency services or the doctor now. Please check in."
-        if m["kind"] == "sim" or (record.awake(m, now)):
+        if m.get("relay_pref") == "stop":
+            audit(conn, "urgent_alert_skipped", m["id"], "chose STOP", "urgent alert: member chose STOP")
+        elif m["kind"] == "sim" or (record.awake(m, now)):
             ob.send(m["id"], alert, "urgent symptom alert to awake member")
         else:
             audit(conn, "urgent_alert_skipped", m["id"], f"asleep (local {record.local_time(m, now).strftime('%H:%M')})", "urgent alert: member asleep")
+
+
+def _set_pref(conn, ob, mid, choice, text):
+    _send(ob, mid, CHOICE_REPLY[choice], f"relay choice: {choice}", text)  # sent before STOP takes effect
+    record.set_relay_pref(conn, mid, choice)
+    audit(conn, "relay_pref", mid, choice, "member chose how many updates to get")
+
+
+def _relay_choice(conn, ob, mid, text, now):
+    r, _, _ = llm.spark_json("phase3", "relay-choice", [{"role": "user", "content": CHOICE_PROMPT.format(text=text)}], CHOICE_SCHEMA)
+    _set_pref(conn, ob, mid, r["choice"], text)
 
 
 def _other(conn, ob, mid, text, now):
