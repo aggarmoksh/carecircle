@@ -71,6 +71,13 @@ def check(conn, text, sender_text=""):
             allowed_doses.add((float(l["dose_amount"]), _norm_unit(l["dose_unit"])))
     allowed_tokens |= _tokens(sender_text)
     allowed_doses |= _doses(sender_text)
+    # a task made from a member's own message may be named in messages about that task (its creator, owner and relays carry the task text verbatim)
+    flat = re.sub(r"\s+", " ", text.lower())
+    for t in conn.execute("SELECT text FROM tasks WHERE source IN ('medical question','correction')"):
+        tt = re.sub(r"\s+", " ", t["text"].lower())
+        if tt in flat:
+            allowed_tokens |= _tokens(tt)
+            allowed_doses |= _doses(tt)
     if bad_lab:
         return False, f"lab value not in record: {', '.join(bad_lab)}"
     bad = sorted((_tokens(text) & KNOWN_DRUGS) - allowed_tokens)

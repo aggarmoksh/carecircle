@@ -1,77 +1,212 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CareCircle board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#15181d;--mut:#5b6573;--line:#dde1e7;--ok:#1b7a3d;--okb:#e3f4e9;--warn:#8a5a00;--warnb:#fff1d6;--miss:#a12020;--missb:#fde4e4;--info:#1e4f9a;--infob:#e4edfb}
-*{box-sizing:border-box}body{margin:0;font:14px/1.4 system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--ink)}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:12px 20px;background:#15181d;color:#fff}
-header h1{font-size:18px;margin:0}header .t{font-variant-numeric:tabular-nums}
-main{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:14px;padding:14px 20px}
-section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px}section.wide{grid-column:1/-1}
-h2{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
-table{border-collapse:collapse;width:100%}td,th{padding:4px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{font-size:12px;color:var(--mut);font-weight:600}
-.chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;font-weight:600;border:1px solid transparent;white-space:nowrap}
-.given,.within,.awake,.real{background:var(--okb);color:var(--ok);border-color:#b9e0c6}
-.not_yet_due,.no_range,.asleep{background:#eceff3;color:var(--mut);border-color:var(--line)}
-.due,.overdue,.above,.below,.unsure{background:var(--warnb);color:var(--warn);border-color:#f0d9a3}
-.missed,.skipped{background:var(--missb);color:var(--miss);border-color:#f3baba}
-.sim{background:var(--infob);color:var(--info);border-color:#bcd0f0}
-.mut{color:var(--mut)}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.ladder{border-left:3px solid var(--warn);padding-left:10px;margin:6px 0}
-.lab{margin-bottom:12px}.lab h3{font-size:13px;margin:6px 0}
-img.org{max-width:100%;border:1px solid var(--line);border-radius:6px;margin-top:6px}.imgs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-input,button{font:inherit;padding:4px 8px}button{cursor:pointer}a.btn{padding:4px 10px;background:#fff;color:#15181d;border-radius:5px;text-decoration:none}
-.labrep{margin:0 0 16px}.labrep h3{font-size:14px;margin:0 0 2px}.lsum{margin:2px 0 6px}.lt td{vertical-align:middle}.lt tr.above td,.lt tr.below td{font-weight:600}
-.ico{display:inline-block;width:1.2em;text-align:center}.rbar text,.trend text{font-size:10px;fill:#5b6573}.trendbox{display:inline-block;width:350px;margin:8px 14px 8px 0;vertical-align:top}
+/*LABCSS*/
+:root{--canvas:#FAF7F2;--surface:#fff;--ink:#1C2733;--muted:#5B6672;--line:#E7E1D8;--accent:#E8833A;--action:#2563EB;--within:#1F8A70;--outside:#B26B00;--outsideb:#FFF4E0;--missed:#6B5B95;--sim:#9AA3AD}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/22px Inter,system-ui,Segoe UI,sans-serif;font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:16px 32px;max-width:1440px;margin:0 auto}
+.brand{font-weight:600;font-size:20px;line-height:28px}.brand i{color:var(--accent);font-style:inherit}
+.pt{color:var(--muted)}.pt b{color:var(--ink);font-weight:600}.sp{flex:1}
+.btn{display:inline-flex;gap:8px;align-items:center;padding:8px 16px;border-radius:999px;background:var(--action);color:#fff;text-decoration:none;font-weight:500;font-size:15px;border:0;cursor:pointer;font-family:inherit}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.badge{display:none;padding:2px 12px;border-radius:999px;background:var(--outsideb);color:var(--outside);font-size:13px;font-weight:600}.badge.on{display:inline-block}
+main{max-width:1440px;margin:0 auto;padding:0 32px 32px;display:grid;grid-template-columns:repeat(12,1fr);gap:24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
+.card h2{font-size:20px;line-height:28px;margin:0 0 16px;font-weight:600}
+.c5{grid-column:span 5}.c7{grid-column:span 7}.c12{grid-column:span 12}
+.mut{color:var(--muted)}.lbl{font-size:13px;line-height:18px;color:var(--muted)}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:2px 10px;border-radius:999px;font-size:13px;line-height:18px;font-weight:500;border:1px solid var(--line);background:#fff;white-space:nowrap}
+.chip.within{color:var(--within);border-color:#BFE3D8}.chip.out{color:var(--outside);background:var(--outsideb);border-color:#F3DDB4}.chip.missed{color:var(--missed);border-color:#D8D1E8}
+.ic{display:inline-flex;vertical-align:-3px}.ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* the circle */
+.circle svg{width:100%;height:auto;display:block}.ring{fill:none;stroke:var(--line);stroke-width:1}
+.node circle.n{fill:#fff;stroke:#8A939D;stroke-width:1.5}.node.sim circle.n{stroke:var(--sim);stroke-dasharray:4 3}.node.stop{opacity:.45}.node.hot circle.n{stroke:var(--accent);stroke-width:3}
+.node text{font-family:Inter,system-ui,sans-serif;fill:var(--ink)}.node .nm{font-size:13px;font-weight:600}.node .sub{font-size:12px;fill:var(--muted)}.node .ini{font-size:15px;font-weight:600}
+.node .tag{font-size:10px;fill:var(--muted)}
+.arc{stroke:var(--accent);stroke-width:2;fill:none;stroke-linecap:round}.arc.anim{stroke-dasharray:400;stroke-dashoffset:400;animation:arc .6s ease-out forwards}
+@keyframes arc{to{stroke-dashoffset:0}}
+.pc{fill:var(--canvas);stroke:var(--line)}
+.chips{display:none;gap:8px;overflow-x:auto;padding-bottom:4px}.chips .m{flex:0 0 auto;border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:13px;line-height:18px;background:#fff}
+.chips .m.sim{border-style:dashed;border-color:var(--sim)}.chips .m.stop{opacity:.5}.chips b{display:block;font-size:15px}
+.legend{margin-top:8px;font-size:13px;color:var(--muted)}
+/* now */
+.eyebrow{font-size:13px;color:var(--muted);margin-bottom:4px}
+.nowhead{font-size:32px;line-height:40px;font-weight:600;margin:0 0 12px;letter-spacing:-.01em}
+.tl{list-style:none;margin:16px 0 0;padding:0 0 0 16px;border-left:2px solid var(--line)}.tl li{position:relative;padding:4px 0 8px 12px}
+.tl li:before{content:"";position:absolute;left:-23px;top:12px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid var(--accent)}.tl li.skip:before{border-color:var(--sim)}
+.tl time{font-weight:600;margin-right:8px}
+/* today */
+.scroll{overflow-x:auto}.day{position:relative;min-width:960px;height:160px;margin:8px 40px 0}.axis{position:absolute;left:0;right:0;top:20px;height:2px;background:var(--line)}
+.tick{position:absolute;top:30px;font-size:13px;color:var(--muted);transform:translateX(-50%)}.tick:before{content:"";position:absolute;left:50%;top:-12px;height:8px;border-left:1px solid var(--line)}
+.nowm{position:absolute;top:0;bottom:0;border-left:2px solid var(--accent)}.nowm span{position:absolute;top:-2px;left:6px;font-size:13px;font-weight:600;color:var(--accent);background:var(--surface);padding:0 4px}
+.slot{position:absolute;top:52px;z-index:1;background:rgba(255,255,255,.9);padding:2px 6px;border-radius:8px;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.dose{display:flex;gap:8px;align-items:center;font-size:13px;line-height:18px;white-space:nowrap}
+.dot{flex:0 0 22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;border:2px solid #B8C0C8;color:var(--muted);background:#fff}
+.dot.given{background:var(--within);border-color:var(--within);color:#fff}.dot.overdue,.dot.due{border-color:var(--outside);color:var(--outside)}
+.dot.missed{border-color:var(--missed);color:var(--missed)}.dot.not_yet_due{border-color:#B8C0C8}.dot.skipped{border-color:var(--missed);color:var(--missed);border-style:dashed}
+.dot.pin{position:absolute;top:10px;left:50%;margin-left:-6px;width:12px;height:12px;flex:none;border-width:2px}
+/* organiser, tasks */
+.org{display:grid;grid-template-columns:150px 1fr;gap:24px;align-items:start}.org img{width:150px;height:150px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+.grid7{display:grid;grid-template-columns:36px repeat(7,1fr);gap:4px;font-size:12px;max-width:380px}.grid7 .h{color:var(--muted);text-align:center;line-height:18px}
+.cell{height:30px;border-radius:8px;border:1.5px solid #B8C0C8;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+.cell.full{background:#EFE9DF;border-color:#CFC6B8}.cell.mis{outline:2px solid var(--outside);outline-offset:1px;border-color:var(--outside);color:var(--outside);font-weight:600}
+.tasks{list-style:none;margin:0;padding:0}.tasks li{padding:8px 0;border-top:1px solid var(--line)}.tasks li:first-child{border:0}
+/* activity */
+.act{list-style:none;margin:0;padding:0}.act li{display:grid;grid-template-columns:20px 52px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line);align-items:start}.act li:first-child{border:0}
+.act time{font-weight:500;color:var(--muted)}.act .ic{color:var(--muted)}.act details summary{display:inline;cursor:pointer;color:var(--muted);font-size:13px;margin-left:8px}
+.act code{display:block;font:12px/18px ui-monospace,Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-word}
+.members{width:100%;border-collapse:collapse}.members td,.members th{padding:6px 8px;border-top:1px solid var(--line);text-align:left;font-size:14px}.members th{color:var(--muted);font-weight:500;font-size:13px;border:0}
+footer{max-width:1440px;margin:0 auto;padding:8px 32px 32px;color:var(--muted);font-size:13px;line-height:18px}
+.demo summary{cursor:pointer;color:var(--muted);font-size:13px}.demo input,.demo button{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+@media(max-width:1000px){main{grid-template-columns:1fr}.c5,.c7,.c12{grid-column:1}}
+@media(max-width:700px){.top{padding:12px 16px}main{padding:0 16px 24px;gap:16px}.card{padding:16px}.nowhead{font-size:26px;line-height:32px}.circle svg{display:none}.chips{display:flex}.org{grid-template-columns:1fr}#now-card{order:-1}#circle-card{order:0}.legend{display:none}.act li{grid-template-columns:18px 44px 1fr}}
+@media(prefers-reduced-motion:reduce){.arc.anim{animation:none;stroke-dashoffset:0}}
 </style></head>
 <body>
-<header><h1>CareCircle board &middot; <span id="patient"></span></h1><div class="row"><span class="t" id="clock"></span><a class="btn" id="doc" href="#">Doctor summary</a></div></header>
+<div class="top">
+ <div class="brand">CareCircle<i>.</i></div>
+ <div class="pt">Caring for <b id="patient"></b> · <span id="clock"></span></div>
+ <span class="badge" id="badge"></span><div class="sp"></div>
+ <a class="btn" id="doc" href="#"><span class="ic" id="docic"></span>Doctor summary</a>
+</div>
 <main>
-<section><h2>Circle members</h2><table id="members"></table></section>
-<section><h2>Today's doses</h2><table id="doses"></table></section>
-<section class="wide"><h2>Open escalation ladder</h2><div id="ladder"></div></section>
-<section class="wide"><h2>Latest organiser audit</h2><div id="organiser"></div></section>
-<section class="wide"><h2>Lab reports</h2><div id="labs"></div></section>
-<section><h2>Open tasks</h2><div id="tasks"></div></section>
-<section><h2>Demo clock (admin)</h2>
- <div class="row"><input id="atok" type="password" placeholder="ADMIN_TOKEN" size="14"><input id="atime" placeholder="UTC time e.g. 2026-11-03T08:30:00Z" size="30"><button id="bset">Set time</button></div>
- <div class="row" style="margin-top:6px"><input id="aspeed" value="1" size="4"><button id="bspeed">Set speed</button><button id="bnext">Jump to next due dose</button><button id="bnudge">Jump to next due + grace</button></div>
- <div id="amsg" class="mut" style="margin-top:6px"></div></section>
-<section class="wide"><h2>Last 20 audit log lines</h2><table id="audit"></table></section>
+ <section class="card c5 circle" id="circle-card"><h2>The circle</h2><div id="circle"></div><div class="chips" id="chips"></div>
+  <div class="legend">Inner ring: nearby. Outer ring: far away. Dashed outline: simulated member.</div></section>
+ <section class="card c7" id="now-card"><div class="eyebrow">Now</div><div class="nowhead" id="nowhead"></div><div id="nowchip"></div><ol class="tl" id="tl"></ol></section>
+ <section class="card c12"><h2>Today</h2><div class="scroll"><div class="day" id="day"></div></div></section>
+ <section class="card c12"><h2>Lab values</h2><div id="labs"></div></section>
+ <section class="card c7"><h2>Pill organiser</h2><div id="organiser"></div></section>
+ <section class="card c5"><h2>Tasks</h2><div id="tasks"></div></section>
+ <section class="card c12"><h2>Who gets which updates</h2><table class="members" id="members"></table></section>
+ <section class="card c12"><h2>Activity</h2><ul class="act" id="audit"></ul></section>
+ <section class="card c12 demo"><details><summary>Demo controls</summary>
+  <div class="row"><input id="atok" type="password" placeholder="Admin token" size="14" aria-label="Admin token"><input id="atime" placeholder="UTC time, e.g. 2026-11-03T08:30:00Z" size="30" aria-label="UTC time"><button id="bset">Set time</button></div>
+  <div class="row"><input id="aspeed" value="1" size="4" aria-label="Speed"><button id="bspeed">Set speed</button><button id="bnext">Jump to next due dose</button><button id="bnudge">Jump to next due + grace</button></div>
+  <div id="amsg" class="mut" style="margin-top:8px"></div></details></section>
 </main>
+<footer>Built on Meta Muse Spark and Muse Voice Transcribe · WhatsApp prototype via the Twilio sandbox · Simulated members are labelled · Not medical advice.</footer>
 <script>
 const TOKEN=new URLSearchParams(location.search).get('token')||'';
 const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k])}
  for(const c of kids.flat()){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e}
-const chip=(cls,txt)=>h('span',{class:'chip '+cls},txt||cls.replace('_',' '));
-const WORD={within:"within the lab's printed range",above:"above the lab's printed range",below:"below the lab's printed range",no_range:"no range printed"};
-const RELAY={everything:'every update',duties:'own duties and alerts only',daily:'daily summary at 8 PM',stop:'stopped (until they write)'};
+const ICONS={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
+ moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',cross:'<path d="M6 6l12 12M18 6L6 18"/>',
+ bang:'<path d="M12 7v6M12 17v.5"/><circle cx="12" cy="12" r="9"/>',chat:'<path d="M4 5h16v11H9l-5 4z"/>',camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+ mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',pill:'<rect x="3" y="9" width="18" height="6" rx="3" transform="rotate(-35 12 12)"/><path d="M9.5 8.5l5 7"/>',
+ send:'<path d="M4 12L20 4l-6 16-3-7z"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',mute:'<path d="M5 9v6h4l5 4V5L9 9zM17 9l4 6M21 9l-4 6"/>',
+ bell:'<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/>',list:'<path d="M8 6h12M8 12h12M8 18h12M4 6h.5M4 12h.5M4 18h.5"/>',
+ grid:'<path d="M4 4h16v16H4zM4 12h16M12 4v16"/>',lab:'<path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3M8 3h8"/>',flag:'<path d="M6 21V4M6 4h11l-2 4 2 4H6"/>',dot:'<circle cx="12" cy="12" r="3"/>',doc:'<path d="M7 3h8l4 4v14H7zM14 3v5h5M10 13h6M10 17h6"/>'};
+const ic=n=>{const s=h('span',{class:'ic','aria-hidden':'true'});s.innerHTML='<svg viewBox="0 0 24 24">'+(ICONS[n]||ICONS.dot)+'</svg>';return s};
+const icS=(n,x,y)=>'<svg x="'+(x||0)+'" y="'+(y||0)+'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[n]||'')+'</svg>';
+const skipWhy=w=>w.replace(/^asleep \(local (.*)\)$/,'asleep, $1').replace(/^chose STOP.*/,'stopped, no messages').replace(/^24h window closed.*/,'cannot message yet');
+const RELAY={everything:'Every update',duties:'Own duties and alerts only',daily:'Alerts and a daily summary at 8 PM',stop:'Stopped until they write'};
 const SWORD={given:'given',not_yet_due:'not yet due',due:'due, not confirmed',overdue:'overdue, escalating',skipped:'skipped',unsure:'unsure',missed:'missed'};
-function fill(el,...kids){el.replaceChildren(...kids.flat())}
-function render(s){
- $('patient').textContent=s.patient;$('clock').textContent=s.patient_local+' (patient local) · speed x'+s.speed;
- fill($('members'),h('tr',null,h('th',null,'Member'),h('th',null,'Role'),h('th',null,'Local time'),h('th',null,'Now'),h('th',null,''),h('th',null,'Updates')),
-  s.members.map(m=>h('tr',null,h('td',null,m.name,' ',h('span',{class:'mut'},m.relationship)),h('td',null,m.role.replace('_',' ')),h('td',null,m.local+' '+m.city),
-   h('td',null,chip(m.awake?'awake':'asleep')),h('td',null,m.simulated?chip('sim','simulated'):chip('real','real')),h('td',null,RELAY[m.relay]||m.relay))));
- fill($('doses'),h('tr',null,h('th',null,'Time'),h('th',null,'Medicine'),h('th',null,'Status'),h('th',null,'Who / note')),
-  s.doses.map(d=>h('tr',null,h('td',null,d.time),h('td',null,d.medicine),h('td',null,chip(d.status,SWORD[d.status]+(d.late?' (late)':''))),
-   h('td',null,[d.by?('by '+d.by):'',d.reported_by?(' · reported by '+d.reported_by):'',d.note?(' · '+d.note):'']))));
- fill($('ladder'),s.ladder.length?s.ladder.map(l=>h('div',{class:'ladder'},h('b',null,l.slot.replace('_',' ')+' · due '+l.due.slice(0,16).replace('T',' ')+'Z '),chip(l.status,SWORD[l.status]||l.status),
-   l.steps.map(x=>h('div',null,x.at.slice(11,19)+'Z · '+x.kind+' → '+x.who+(x.note?' ('+x.note+')':''))),
-   l.skipped.map(x=>h('div',{class:'mut'},x.at.slice(11,19)+'Z · skipped '+x.who+': '+x.why)),
-   (!l.steps.length&&!l.skipped.length)?h('div',{class:'mut'},'waiting for the grace period'):null)):h('div',{class:'mut'},'No open ladder: nothing is overdue.'));
- const o=s.organiser;
- fill($('organiser'),o?[h('div',{class:'mut'},'Document '+o.doc+' · '+o.at),
-   o.mismatches.length?h('ul',null,o.mismatches.map(m=>h('li',null,m.text))):h('div',null,'The organiser agrees with the record.'),
-   h('div',{class:'imgs'},h('div',null,h('div',{class:'mut'},'Photo'),h('img',{class:'org',src:'/api/doc/'+o.doc+'/photo?token='+encodeURIComponent(TOKEN)})),
-    h('div',{class:'mut'},'Compartments are judged from the photo by the model alone; no segmentation overlay is shown.'))]:h('div',{class:'mut'},'No organiser photo yet.'));
- $('labs').innerHTML=s.lab_html;
- fill($('tasks'),s.tasks.length?h('ul',null,s.tasks.map(t=>h('li',null,t.text,' ',h('span',{class:'mut'},'· '+(t.owner||'nobody yet'))))):h('div',{class:'mut'},'No open tasks.'));
- fill($('audit'),h('tr',null,h('th',null,'Time (UTC)'),h('th',null,'Event'),h('th',null,'Who'),h('th',null,'Detail')),s.audit.map(a=>h('tr',null,h('td',null,a.at.slice(0,19).replace('T',' ')),h('td',null,a.kind),h('td',null,a.actor||''),h('td',{class:'mut'},a.detail))));
+const SICON={given:'check',overdue:'bang',due:'bang',missed:'cross',skipped:'cross',not_yet_due:'clock',unsure:'bang'};
+let S=null,lastArc='',lastLab='',lastAudit='',selRep=0;
+const hhmm=(iso,tz)=>new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));
+const partOf=t=>{const hr=+t.slice(0,2);return hr<12?'Morning':hr<17?'Afternoon':'Evening'};
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+
+function renderCircle(s,hot,skips){
+ const W=520,Hh=520,cx=260,cy=255,R={hands_on:88,remote:158};
+ const groups={hands_on:s.members.filter(m=>m.role==='hands_on'),remote:s.members.filter(m=>m.role!=='hands_on')};
+ const pos={};
+ for(const role in groups){const g=groups[role],n=g.length,off=role==='hands_on'?-60:-100;
+  g.forEach((m,i)=>{const a=(off+i*360/n)*Math.PI/180;pos[m.id]=[cx+R[role]*Math.cos(a),cy+R[role]*Math.sin(a)]})}
+ let o='<svg viewBox="0 0 '+W+' '+Hh+'" role="img" aria-label="The circle: the patient at the centre, nearby members on the inner ring, members far away on the outer ring">';
+ o+='<circle class="ring" cx="'+cx+'" cy="'+cy+'" r="'+R.hands_on+'"/><circle class="ring" cx="'+cx+'" cy="'+cy+'" r="'+R.remote+'"/>';
+ if(hot&&pos[hot]){const k=hot+lastArcKey;o+='<line class="arc'+(lastArc!==k?' anim':'')+'" x1="'+cx+'" y1="'+cy+'" x2="'+pos[hot][0]+'" y2="'+pos[hot][1]+'"/>';lastArc=k}
+ o+='<circle class="pc" cx="'+cx+'" cy="'+cy+'" r="42"/><text x="'+cx+'" y="'+(cy-2)+'" text-anchor="middle" style="font-weight:600;font-size:14px;fill:#1C2733">'+esc(s.patient)+'</text>'
+  +'<text x="'+cx+'" y="'+(cy+16)+'" text-anchor="middle" style="font-size:12px;fill:#5B6672">'+esc(s.patient_local.slice(-5))+'</text>';
+ s.members.forEach(m=>{const [x,y]=pos[m.id];const up=y<cy;const tz=skips[m.id];
+  o+='<g class="node'+(m.simulated?' sim':'')+(m.relay==='stop'?' stop':'')+(hot===m.id?' hot':'')+'"><title>'+esc(m.name)+', '+esc(m.relationship)+', '+esc(m.local)+' '+esc(m.city)+(m.awake?' (awake)':' (asleep)')+'</title>'
+   +'<circle class="n" cx="'+x+'" cy="'+y+'" r="27"/><text class="ini" x="'+x+'" y="'+(y+5)+'" text-anchor="middle">'+esc(m.name[0])+'</text>';
+  const by=up?y-38:y+42;const L=[['nm',m.name+(m.simulated?'':'')],['sub',m.relationship.replace(' (simulated)','')],['sub',m.local+' '+m.city]];
+  if(tz)L.push(['sub',tz]);
+  const start=up?by-(L.length-1)*15:by;
+  L.forEach((l,i)=>{o+='<text class="'+l[0]+'" x="'+x+'" y="'+(start+i*15)+'" text-anchor="middle">'+esc(l[1])+'</text>'});
+  o+='<g style="color:#5B6672">'+icS(m.awake?'sun':'moon',x+12,y-36)+'</g>';
+  if(m.simulated)o+='<text class="tag" x="'+(x-30)+'" y="'+(y-30)+'" text-anchor="end">sim</text>';
+  o+='</g>'});
+ return o+'</svg>';
 }
+let lastArcKey='';
+function render(s){
+ S=s;const tzp=s.patient_tz;
+ $('patient').textContent=s.patient;$('clock').textContent=s.patient_local+' local time';
+ if($('atok').value){$('badge').textContent='Demo clock ×'+s.speed;$('badge').classList.add('on')}else $('badge').classList.remove('on');
+ // now
+ const open=s.ladder.filter(l=>l.status==='overdue'||l.status==='due');
+ const lead=open.find(l=>l.status==='overdue')||open[0];
+ const ms=Object.fromEntries(s.members.map(m=>[m.id,m]));
+ let hot=null,skips={};
+ if(lead){const [med,t]=lead.slot.split('_');const mins=Math.max(0,Math.round((new Date(s.now)-new Date(lead.due))/60000));
+  $('nowhead').textContent=cap(partOf(t).toLowerCase())+' '+med+' · due '+t+(lead.status==='overdue'?' · overdue '+mins+' min':' · waiting for confirmation');
+  const more=open.length-1;
+  fill($('nowchip'),chipEl(lead.status),more>0?h('span',{class:'mut',style:'margin-left:8px'},'and '+more+' more dose'+(more>1?'s':'')+' due at the same time: '+open.filter(l=>l!==lead).map(l=>l.slot.split('_')[0]).join(', ')):null);
+  const ev=[...lead.steps.map(x=>({at:x.at,kind:x.kind,who:x.who,actor:x.actor,note:x.note})),...lead.skipped.filter((x,i,a)=>a.findIndex(y=>y.actor===x.actor)===i).map(x=>({at:x.at,kind:'skip',who:x.who,actor:x.actor,why:x.why}))].sort((a,b)=>a.at<b.at?-1:1);
+  fill($('tl'),ev.length?ev.map(x=>h('li',{class:x.kind==='skip'?'skip':''},h('time',null,hhmm(x.at,tzp)),
+    x.kind==='nudged'?'nudged '+x.who+' privately':x.kind==='escalated'?'asked '+x.who:'skipped '+x.who+' ('+skipWhy(x.why)+')')):[h('li',{class:'mut'},'Waiting for the grace period to pass.')]);
+  const stepsOnly=lead.steps;if(stepsOnly.length){hot=stepsOnly[stepsOnly.length-1].actor;lastArcKey='|'+stepsOnly[stepsOnly.length-1].at}
+  lead.skipped.forEach(x=>{if(!(x.actor in skips))skips[x.actor]=skipWhy(x.why)});
+ }else{
+  fill($('nowchip'),[]);fill($('tl'),[]);
+  $('nowhead').textContent=s.next_dose?'All caught up. Next: '+s.next_dose.medicine+' at '+s.next_dose.time+(s.next_dose.day==='tomorrow'?' tomorrow':'')+'.':'All caught up.';
+ }
+ // circle
+ $('circle').innerHTML=renderCircle(s,hot,skips);
+ fill($('chips'),s.members.map(m=>h('div',{class:'m'+(m.simulated?' sim':'')+(m.relay==='stop'?' stop':'')},h('b',null,m.name),m.relationship.replace(' (simulated)','')+(m.simulated?' · sim':''),h('br'),
+   m.local+' '+m.city+' ',(()=>{const sp=h('span',{class:'ic'});sp.innerHTML=icS(m.awake?'sun':'moon');return sp})(),m.awake?' awake':' asleep')));
+ // today
+ renderDay(s);
+ // organiser
+ const o=s.organiser;
+ fill($('organiser'),o?[h('div',{class:'org'},h('a',{href:'/api/doc/'+o.doc+'/photo?token='+encodeURIComponent(TOKEN),target:'_blank','aria-label':'Open the organiser photo'},h('img',{src:'/api/doc/'+o.doc+'/photo?token='+encodeURIComponent(TOKEN),alt:'The pill organiser photo'})),
+   h('div',null,orgGrid(o),h('div',{class:'lbl',style:'margin-top:8px'},'Shaded: still full. Plain: empty. Amber outline: does not match the record.'),
+   o.mismatches.length?h('ul',{style:'margin:8px 0 0;padding-left:18px'},o.mismatches.map(m=>h('li',null,m.text))):h('div',{style:'margin-top:8px'},'The organiser agrees with the record.'),
+   h('div',{class:'lbl',style:'margin-top:4px'},'Compartments are read from the photo by the model alone. Photo from '+hhmm(o.at,tzp)+'.')))]:h('div',{class:'mut'},'No organiser photo yet.'));
+ // labs (only when changed, so the report switcher and the open sections stay as the reader left them)
+ if(s.lab_html!==lastLab){lastLab=s.lab_html;$('labs').innerHTML=s.lab_html;showRep(selRep)}
+ fill($('tasks'),s.tasks.length?h('ul',{class:'tasks'},s.tasks.map(t=>h('li',null,t.text,' ',h('span',{class:'chip'},t.owner?'Owner: '+t.owner:'Nobody yet')))):h('div',{class:'mut'},'No open tasks.'));
+ fill($('members'),h('tr',null,h('th',null,'Member'),h('th',null,'Where'),h('th',null,'Now'),h('th',null,'Updates')),
+  s.members.map(m=>h('tr',null,h('td',null,m.name,' ',h('span',{class:'mut'},m.relationship)),h('td',null,m.local+' '+m.city),
+   h('td',null,h('span',{class:'chip'},ic(m.awake?'sun':'moon'),m.awake?'awake':'asleep'),' ',m.simulated?h('span',{class:'chip'},'simulated'):''),h('td',null,RELAY[m.relay]||m.relay))));
+ const key=JSON.stringify(s.audit);
+ if(key!==lastAudit){lastAudit=key;fill($('audit'),s.audit.map(a=>h('li',null,ic(a.icon),h('time',null,a.time),h('div',null,a.text,
+   h('details',{style:'display:inline'},h('summary',null,'details'),h('code',null,a.at.slice(0,19).replace('T',' ')+' UTC · '+a.kind+(a.actor?' · '+a.actor:'')+(a.detail?'\n'+a.detail:''))))))) }
+}
+function fill(el,...kids){el.replaceChildren(...kids.flat())}
+function chipEl(st){const c=h('span',{class:'chip '+(st==='given'?'within':st==='missed'||st==='skipped'?'missed':'out')},ic(SICON[st]||'dot'),SWORD[st]||st);return c}
+function renderDay(s){
+ const day=$('day');day.replaceChildren();day.append(h('div',{class:'axis'}));
+ [0,6,12,18,24].forEach(hr=>{const t=h('div',{class:'tick'},(hr<10?'0':'')+(hr===24?'24':hr)+':00');t.style.left=(hr/24*100)+'%';day.append(t)});
+ const byTime={};s.doses.forEach(d=>{(byTime[d.time]=byTime[d.time]||[]).push(d)});
+ for(const t in byTime){const g=h('div',{class:'slot'});const m=(+t.slice(0,2))*60+(+t.slice(3));g.style.left=(m/1440*100)+'%';
+  g.append(h('div',{class:'lbl'},t));
+  byTime[t].forEach(d=>g.append(h('div',{class:'dose'},h('span',{class:'dot '+d.status},d.status==='given'?(d.initial||'✓'):d.status==='missed'?'×':d.status==='skipped'?'–':''),
+   h('span',null,d.medicine+' · '+SWORD[d.status]+(d.late?' (late)':'')+(d.by&&d.status==='given'?' by '+d.by:'')+(d.status==='skipped'&&d.note?' ('+d.note+')':'')))));
+  day.append(g)}
+ const nm=s.patient_local.slice(-5);const nmin=(+nm.slice(0,2))*60+(+nm.slice(3));
+ const n=h('div',{class:'nowm'},h('span',null,'now '+nm));n.style.left=(nmin/1440*100)+'%';day.append(n);
+}
+function orgGrid(o){
+ const days=['MON','TUE','WED','THU','FRI','SAT','SUN'],mis=new Set(o.mismatches.map(m=>m.compartment));
+ const g=h('div',{class:'grid7',role:'group','aria-label':'Organiser compartments, Monday to Sunday, morning and evening'},h('div'),days.map(d=>h('div',{class:'h'},d.charAt(0)+d.slice(1).toLowerCase())));
+ ['AM','PM'].forEach(p=>{g.append(h('div',{class:'h',style:'align-self:center'},p));
+  days.forEach(d=>{const k=d+'_'+p,st=o.states[k];g.append(h('div',{class:'cell'+(st==='full'?' full':'')+(mis.has(k)?' mis':''),title:k.replace('_',' ')+': '+(st||'not read')+(mis.has(k)?' (does not match the record)':'')},st==='full'?'full':st==='empty'?'empty':'?'))})});
+ return g}
+function showRep(i){selRep=i;document.querySelectorAll('#labs .labrep').forEach(e=>{e.hidden=(+e.dataset.rep!==i)});
+ document.querySelectorAll('#labs .lswitch button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.rep===i?'true':'false'))}
+$('labs').addEventListener('click',e=>{const b=e.target.closest('.lswitch button');if(b)showRep(+b.dataset.rep)});
 async function poll(){try{const r=await fetch('/api/state?token='+encodeURIComponent(TOKEN));if(r.ok)render(await r.json());else document.body.textContent='Access refused'}catch(e){}}
-$('doc').href='/doctor?token='+encodeURIComponent(TOKEN);
+$('doc').href='/doctor?token='+encodeURIComponent(TOKEN);$('docic').innerHTML='<svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:none;stroke:#fff;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">'+ICONS.doc+'</svg>';
 async function admin(body){const r=await fetch('/admin/clock',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':$('atok').value},body:JSON.stringify(body)});
  $('amsg').textContent=r.ok?'OK: '+JSON.stringify(await r.json()):'Refused ('+r.status+')';poll()}
 $('bset').onclick=()=>admin({time:$('atime').value});

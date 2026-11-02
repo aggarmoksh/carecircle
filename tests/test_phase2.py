@@ -128,12 +128,12 @@ def test_board_state_and_charts():
     assert [m["name"] for m in s["members"]] == ["Arjun", "Meena", "Kabir", "Sunita", "Ravi"]
     assert {m["name"] for m in s["members"] if m["simulated"]} == {"Sunita", "Ravi"}
     assert s["lab_latest"] == dict(date="2026-10-29", out_of_range=4)
-    assert "trendbox" not in s["lab_html"]                               # no test appears in two reports in the seed
+    assert 'class="spark"' not in s["lab_html"]                               # no test appears in two reports in the seed
     labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L1", "m3", "2026-10-31T00:00:00Z")
     conn.execute("UPDATE lab_reports SET report_date='2026-09-20' WHERE id=3")
     conn.execute("INSERT INTO lab_values(report_id,test,value,unit,range_text,range_low,range_high,printed_flag,status) VALUES(2,'hba1c',7.9,'%','4.0 - 5.6',4.0,5.6,'H','above')")
     conn.commit()
-    assert "trendbox" in board.state(conn, clock.now())["lab_html"]      # a test in 2+ reports gets a trend (Phase 3: server-built SVG)
+    assert 'class="spark"' in board.state(conn, clock.now())["lab_html"]      # a test in 2+ reports gets a trend (Phase 3: server-built SVG)
 
 
 def test_doctor_summary_adherence_and_footer():

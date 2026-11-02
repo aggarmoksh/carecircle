@@ -1,14 +1,29 @@
-"""Lab graphics as server-built SVG, shared by the board and the doctor summary.
-Per test: the range the lab printed as a band, the reported value as a marker, status in words and a shape (never colour alone).
-One-sided ranges are open-ended (the band runs off the end with an arrow); no range printed means no bar. Nothing here judges or explains a value."""
-import html, re
+"""Lab graphics as server-built SVG, shared by the board and the doctor summary (docs/DESIGN.md, "Lab values").
+One row per test: name, value with unit, a 220 px range bar (the printed range as a soft band, the value as a dot), an optional 120 px trend.
+Within the printed range = solid teal dot; outside = hollow amber dot with a triangle (up = above, down = below). One-sided ranges fade to the open side.
+No range printed = the words, no bar. Status is always in words and a shape, never colour alone. Nothing here judges or explains a value."""
+import html, itertools
 from . import labs
 
 E = html.escape
 ICON = {"above": "▲", "below": "▼", "within": "●", "no_range": "–"}
 WORD = {"above": "above the lab's printed range", "below": "below the lab's printed range", "within": "within the lab's printed range", "no_range": "no range printed"}
-ORDER = {"above": 0, "below": 0, "within": 1, "no_range": 2}
-INK, BAND, EDGE = "#15181d", "#d5dbe3", "#5b6573"
+ORDER = {"above": 0, "below": 0, "no_range": 1, "within": 2}
+_ids = itertools.count(1)
+
+CSS = (
+    ":root{--within:#1F8A70;--outside:#B26B00;--outsideb:#FFF4E0;--band:#E3DDD3;--bandedge:#C9C1B4;--lineink:#1C2733;--muted:#5B6672;--rule:#E7E1D8}"
+    ".labrep{margin:0 0 8px}.lhead{font-size:15px;font-weight:600;margin:0 0 8px}.lorigin{font-size:13px;color:var(--muted);margin:-4px 0 8px}"
+    ".lrow{display:grid;grid-template-columns:150px 130px 232px 130px 1fr;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--rule);font-size:15px}"
+    ".lrow .ln{font-weight:500}.lrow .lv{font-variant-numeric:tabular-nums}.lrow .u{color:var(--muted);font-size:13px}.lrow .lw{font-size:13px;color:var(--muted)}"
+    ".lrow.above .lw,.lrow.below .lw{color:var(--outside);font-weight:600}.lrow.within .lw{color:var(--within)}.ico{display:inline-block;width:1.2em;text-align:center}"
+    ".lwithin summary{cursor:pointer;font-size:14px;color:var(--muted);padding:8px 0;border-top:1px solid var(--rule)}.lwithin summary:focus-visible,.lswitch button:focus-visible{outline:2px solid #E8833A;outline-offset:2px}"
+    ".lswitch{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}.lswitch button{font:inherit;font-size:13px;border:1px solid var(--rule);background:#fff;border-radius:999px;padding:3px 12px;cursor:pointer}"
+    ".lswitch button[aria-pressed=true]{border-color:#2563EB;color:#2563EB;font-weight:600}"
+    ".rbar text,.spark text{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums}.rb-band{fill:var(--band);stroke:var(--bandedge);stroke-width:1}"
+    ".rb-stop{stop-color:var(--band)}.rb-in{fill:var(--within)}.rb-out{fill:#fff;stroke:var(--outside);stroke-width:2}.rb-tri{fill:var(--outside)}.sp-line{fill:none;stroke:var(--lineink);stroke-width:1.5}"
+    ".lrow.stacked{grid-template-columns:1fr}.lcompact .lrow{padding:3px 0;font-size:13px}"
+    "@media(max-width:700px){.lrow{grid-template-columns:1fr 1fr}.lrow .lb,.lrow .lw{grid-column:1/-1}.lrow .ls{grid-column:1/-1}}")
 
 
 def _lo(t):
@@ -19,118 +34,124 @@ def _hi(t):
     return t.get("parsed_high", t.get("range_high"))
 
 
-def _marker(x, y, status):
-    """Shape per status so the state reads without colour: triangle up = above, triangle down = below, circle = within."""
-    if status == "above":
-        return f'<path d="M{x:.1f},{y-7:.1f} L{x-6:.1f},{y+5:.1f} L{x+6:.1f},{y+5:.1f} Z" fill="{INK}"/>'
-    if status == "below":
-        return f'<path d="M{x:.1f},{y+7:.1f} L{x-6:.1f},{y-5:.1f} L{x+6:.1f},{y-5:.1f} Z" fill="{INK}"/>'
+def _dot(x, y, status, r=6):
     if status == "within":
-        return f'<circle cx="{x:.1f}" cy="{y:.1f}" r="5.5" fill="{INK}"/>'
-    return f'<rect x="{x-4:.1f}" y="{y-4:.1f}" width="8" height="8" fill="none" stroke="{INK}" stroke-width="1.5"/>'
+        return f'<circle class="rb-in" cx="{x:.1f}" cy="{y:.1f}" r="{r}"/>'
+    if status in ("above", "below"):
+        s = 3.6 if r >= 6 else 2.6
+        tri = (f"M{x:.1f},{y - s:.1f} L{x - s:.1f},{y + s * .7:.1f} L{x + s:.1f},{y + s * .7:.1f} Z" if status == "above"
+               else f"M{x:.1f},{y + s:.1f} L{x - s:.1f},{y - s * .7:.1f} L{x + s:.1f},{y - s * .7:.1f} Z")
+        return f'<circle class="rb-out" cx="{x:.1f}" cy="{y:.1f}" r="{r + 1}"/><path class="rb-tri" d="{tri}"/>'
+    return ""
 
 
-def _domain(vals, low, high):
-    pts = list(vals) + [v for v in (low, high) if v is not None]
-    mn, mx = min(pts), max(pts)
-    span = (mx - mn) or abs(mx) or 1.0
-    return mn - span * 0.35, mx + span * 0.35
+def _scale(vals, low, high):
+    """From the smaller of the low end and the values to the larger of the high end and the values, plus 10 % padding on each side."""
+    pts = [v for v in list(vals) + [low, high] if v is not None]
+    a, b = min(pts), max(pts)
+    span = (b - a) or abs(b) or 1.0
+    return a - span * 0.1, b + span * 0.1
 
 
-def range_bar(t):
+def range_bar(t, w=220):
     """SVG bar for one test, or '' when the lab printed no range."""
     low, high = _lo(t), _hi(t)
     if low is None and high is None:
         return ""
-    W, H, M, Y = 300, 56, 10, 36
-    d0, d1 = _domain([t["value"]], low, high)
-    X = lambda v: M + (v - d0) / (d1 - d0) * (W - 2 * M)
-    x0, x1 = (X(low) if low is not None else M), (X(high) if high is not None else W - M)
-    nums = re.findall(labs.NUM, t.get("range_text") or "")
-    lo_txt = nums[0] if low is not None and nums else (labs.fmt_num(low) if low is not None else "")
-    hi_txt = (nums[1] if len(nums) > 1 else nums[0]) if high is not None and nums else (labs.fmt_num(high) if high is not None else "")
-    out = [f'<svg class="rbar" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{E(t["test"])}: {labs.fmt_num(t["value"])} {E(t["unit"])}, {WORD[t["status"]]}">',
-           f'<rect x="{x0:.1f}" y="{Y-6}" width="{max(x1-x0, 1):.1f}" height="12" fill="{BAND}" stroke="{EDGE}" stroke-width="1"/>']
-    if low is None:  # open to the left
-        out.append(f'<path d="M{M+7},{Y-9} L{M},{Y} L{M+7},{Y+9}" fill="none" stroke="{EDGE}" stroke-width="1.5"/>')
-    else:
-        out.append(f'<text x="{x0:.1f}" y="{H-3}" text-anchor="middle">{E(lo_txt)}</text>')
-    if high is None:  # open to the right
-        out.append(f'<path d="M{W-M-7},{Y-9} L{W-M},{Y} L{W-M-7},{Y+9}" fill="none" stroke="{EDGE}" stroke-width="1.5"/>')
-    else:
-        out.append(f'<text x="{x1:.1f}" y="{H-3}" text-anchor="middle">{E(hi_txt)}</text>')
-    vx = X(t["value"])
-    out.append(f'<line x1="{vx:.1f}" y1="{Y-11}" x2="{vx:.1f}" y2="{Y+11}" stroke="{INK}" stroke-width="1.5"/>')
-    out.append(_marker(vx, Y - 14 if t["status"] != "below" else Y - 14, t["status"]))
-    out.append(f'<text x="{vx:.1f}" y="9" text-anchor="middle" style="font-weight:700;fill:{INK}">{labs.fmt_num(t["value"])}</text>')
+    H, Y, M = 34, 13, 8
+    d0, d1 = _scale([t["value"]], low, high)
+    X = lambda v: M + (v - d0) / (d1 - d0) * (w - 2 * M)
+    x0, x1 = (X(low) if low is not None else M), (X(high) if high is not None else w - M)
+    nums = labs_nums(t)
+    gid = f"g{next(_ids)}"
+    fill = "class=\"rb-band\""
+    defs = ""
+    if low is None or high is None:               # one-sided: the band fades to the open side
+        a, b = (("1", "0") if high is None else ("0", "1"))
+        defs = f'<defs><linearGradient id="{gid}" x1="{"0" if high is None else "1"}" x2="{"1" if high is None else "0"}"><stop class="rb-stop" offset="0"/><stop class="rb-stop" offset="1" stop-opacity="0"/></linearGradient></defs>'
+        fill = f'fill="url(#{gid})" stroke="none"'
+    out = [f'<svg class="rbar" width="{w}" height="{H}" viewBox="0 0 {w} {H}" role="img" aria-label="{E(t["test"])}: {labs.fmt_num(t["value"])} {E(t["unit"])}, {WORD[t["status"]]}">', defs,
+           f'<rect {fill} x="{x0:.1f}" y="{Y - 5}" width="{max(x1 - x0, 1):.1f}" height="10" rx="5"/>']
+    if low is not None:
+        out.append(f'<text x="{x0:.1f}" y="{H - 2}" text-anchor="middle">{E(nums[0] if nums else labs.fmt_num(low))}</text>')
+    if high is not None:
+        out.append(f'<text x="{x1:.1f}" y="{H - 2}" text-anchor="middle">{E(nums[-1] if nums else labs.fmt_num(high))}</text>')
+    out.append(_dot(X(t["value"]), Y, t["status"]))
     out.append("</svg>")
     return "".join(out)
 
 
-def trend(name, pts, latest):
-    """Value across reports with the printed band of the latest report. pts: [{date,value,unit,status}]; latest: that report's test row."""
+def labs_nums(t):
+    import re
+    return re.findall(labs.NUM, t.get("range_text") or "")
+
+
+def spark(pts, latest, w=120, h=34):
+    """Value across reports (oldest first) with the printed band of the latest report behind it. pts: [{date,value,status}]."""
     low, high = _lo(latest), _hi(latest)
-    W, H, ML, MR, MT, MB = 340, 130, 40, 40, 22, 24
-    vals = [p["value"] for p in pts]
-    d0, d1 = _domain(vals, low, high)
-    xs = sorted({p["date"] for p in pts})
-    X = lambda dt: ML + (xs.index(dt) / max(len(xs) - 1, 1)) * (W - ML - MR) if len(xs) > 1 else W / 2
-    Y = lambda v: H - MB - (v - d0) / (d1 - d0) * (H - MT - MB)
-    out = [f'<svg class="trend" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" aria-label="{E(name)} across reports">']
+    d0, d1 = _scale([p["value"] for p in pts], low, high)
+    Y = lambda v: h - 5 - (v - d0) / (d1 - d0) * (h - 10)
+    X = lambda i: 6 + i * (w - 12) / max(len(pts) - 1, 1)
+    out = [f'<svg class="spark" width="{w}" height="{h}" viewBox="0 0 {w} {h}" role="img" aria-label="trend across {len(pts)} reports: ' + ", ".join(labs.fmt_num(p["value"]) for p in pts) + '">']
     if low is not None or high is not None:
-        top = Y(high) if high is not None else MT
-        bot = Y(low) if low is not None else H - MB
-        out.append(f'<rect x="{ML}" y="{top:.1f}" width="{W-ML-MR}" height="{max(bot-top, 1):.1f}" fill="{BAND}" stroke="{EDGE}" stroke-dasharray="{"" if low is not None and high is not None else "4 3"}"/>')
-    line = " ".join("%.1f,%.1f" % (X(p["date"]), Y(p["value"])) for p in pts)
-    out.append(f'<polyline points="{line}" fill="none" stroke="{INK}" stroke-width="1.5"/>')
-    for p in pts:
-        x, y = X(p["date"]), Y(p["value"])
-        out.append(_marker(x, y, p["status"]))
-        out.append(f'<text x="{x:.1f}" y="{y-10:.1f}" text-anchor="middle" style="font-weight:700;fill:{INK}">{labs.fmt_num(p["value"])}</text>')
-        anchor = "start" if x <= ML + 1 else ("end" if x >= W - MR - 1 else "middle")
-        out.append(f'<text x="{x:.1f}" y="{H-8}" text-anchor="{anchor}">{E(p["date"])}</text>')
+        top = Y(high) if high is not None else 0
+        bot = Y(low) if low is not None else h
+        out.append(f'<rect class="rb-band" x="0" y="{top:.1f}" width="{w}" height="{max(bot - top, 1):.1f}" opacity=".7"/>')
+    out.append('<polyline class="sp-line" points="' + " ".join("%.1f,%.1f" % (X(i), Y(p["value"])) for i, p in enumerate(pts)) + '"/>')
+    for i, p in enumerate(pts):
+        out.append(_dot(X(i), Y(p["value"]), p["status"], r=3))
     out.append("</svg>")
     return "".join(out)
 
 
-def _sorted(tests):
-    return sorted(tests, key=lambda t: ORDER[t["status"]])
+def _series(reps):
+    """test -> [(date, row)] oldest first, for tests that appear in two or more reports."""
+    s = {}
+    for r in reps:
+        for t in r["tests"]:
+            s.setdefault(t["test"], []).append((r["report_date"], t))
+    return {k: v for k, v in s.items() if len(v) > 1}
 
 
-def report_html(r):
-    """One report: 'N of M outside the lab's printed range', then the tests with out-of-range first."""
-    tests = r["tests"]
+def _row(t, series):
+    rows = series.get(t["test"])
+    sp = spark([dict(date=d, value=x["value"], status=x["status"]) for d, x in rows], rows[-1][1]) if rows and rows[-1][1]["status"] != "no_range" else ""
+    bar = range_bar(t) or '<span class="mut">no range printed</span>'
+    word = WORD[t["status"]] + (f" {E(t['range_text'])}" if t["status"] != "no_range" and t.get("range_text") else "")
+    wcell = "" if t["status"] == "no_range" else '<span class="ico">' + ICON[t["status"]] + "</span> " + word
+    return (f'<div class="lrow {t["status"]}"><div class="ln">{E(t["test"])}</div><div class="lv"><b>{labs.fmt_num(t["value"])}</b> <span class="u">{E(t["unit"])}</span></div>'
+            f'<div class="lb">{bar}</div><div class="ls">{sp}</div><div class="lw">{wcell}</div></div>')
+
+
+def report_html(r, series=None, collapse=True, idx=0, hidden=False):
+    """One report: '29 Oct · Lab · N of M outside the lab's printed range', outside tests first, within-range tests collapsed."""
+    series = series or {}
+    tests = sorted(r["tests"], key=lambda t: ORDER[t["status"]])
     n_out = sum(t["status"] in ("above", "below") for t in tests)
-    h = [f'<div class="labrep"><h3>{E(r["lab"])} · {E(r["report_date"])}</h3>',
-         f'<div class="lsum"><b>{n_out} of {len(tests)} outside the lab\'s printed range</b></div>',
-         '<table class="lt"><tr><th>Test</th><th>Result</th><th>Printed range</th><th>Status</th><th></th></tr>']
-    for t in _sorted(tests):
-        h.append(f'<tr class="{t["status"]}"><td>{E(t["test"])}</td><td>{labs.fmt_num(t["value"])} {E(t["unit"])}</td>'
-                 f'<td>{E(t["range_text"] or "—")}</td><td><span class="ico">{ICON[t["status"]]}</span> {WORD[t["status"]]}</td><td>{range_bar(t)}</td></tr>')
-    h.append("</table></div>")
+    inside = [t for t in tests if t["status"] == "within"]
+    top = [t for t in tests if t["status"] != "within"]
+    h = [f'<div class="labrep" data-rep="{idx}"{" hidden" if hidden else ""}><div class="lhead">{E(labs.pretty_date(r["report_date"]))} · {E(r["lab"])} · {n_out} of {len(tests)} outside the lab\'s printed range</div>']
+    if r.get("origin"):
+        h.append(f'<div class="lorigin">{E(r["origin"])}</div>')
+    h += [_row(t, series) for t in top]
+    if inside and collapse:
+        h.append(f'<details class="lwithin"><summary>{len(inside)} within the lab\'s printed range</summary>' + "".join(_row(t, series) for t in inside) + "</details>")
+    else:
+        h += [_row(t, series) for t in inside]
+    h.append("</div>")
     return "".join(h)
 
 
-def trends_html(reps):
-    """A trend per test that appears in two or more reports (live reports, oldest first)."""
-    series = {}
-    for r in reps:
-        for t in r["tests"]:
-            series.setdefault(t["test"], []).append((r["report_date"], t))
-    out = []
-    for name, rows in series.items():
-        if len(rows) < 2:
-            continue
-        pts = [dict(date=d, value=t["value"], unit=t["unit"], status=t["status"]) for d, t in rows]
-        latest = rows[-1][1]
-        earlier = {t["range_text"] for _, t in rows[:-1]} - {latest["range_text"]}
-        cap = f'printed range on the latest report: {E(latest["range_text"] or "none printed")}' + (f' (earlier: {E(", ".join(sorted(x or "none" for x in earlier)))})' if earlier else "")
-        out.append(f'<div class="trendbox"><div><b>{E(name)}</b> <span class="mut">({E(latest["unit"])}) · {cap}</span></div>{trend(name, pts, latest)}</div>')
-    return "".join(out)
-
-
-def section_html(reps):
-    """Everything for the lab section (newest report first, then trends)."""
+def section_html(reps, print_mode=False):
+    """Everything for the lab section. Board: newest report first with a switcher between reports. Print: the newest report in full, trends from the earlier ones."""
     if not reps:
         return '<div class="mut">No lab reports yet.</div>'
-    return "".join(report_html(r) for r in reversed(reps)) + trends_html(reps)
+    newest_first = list(reversed(reps))
+    series = _series(reps)
+    if print_mode:
+        return '<div class="lcompact">' + report_html(newest_first[0], {}, collapse=False) + "</div>"
+    sw = ""
+    if len(newest_first) > 1:
+        sw = '<div class="lswitch" role="group" aria-label="Lab reports">' + "".join(
+            f'<button type="button" data-rep="{i}" aria-pressed="{"true" if i == 0 else "false"}">{E(labs.pretty_date(r["report_date"]))}</button>' for i, r in enumerate(newest_first)) + "</div>"
+    return sw + "".join(report_html(r, series, idx=i, hidden=i > 0) for i, r in enumerate(newest_first))

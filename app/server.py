@@ -12,7 +12,7 @@ from datetime import date, timedelta
 from fastapi import FastAPI, Request, Response, BackgroundTasks
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from twilio.request_validator import RequestValidator
-from . import db, intake, escalation, record, channel, config, board
+from . import db, intake, escalation, record, channel, config, board, labviz
 from .clock import clock
 from .outbox import Outbox
 
@@ -137,7 +137,7 @@ def _board_ok(request: Request):
 def board_page(request: Request):
     if not _board_ok(request):
         return Response("forbidden", status_code=403)
-    return HTMLResponse((ROOT / "app" / "board.html").read_text(encoding="utf-8"))
+    return HTMLResponse((ROOT / "app" / "board.html").read_text(encoding="utf-8").replace("/*LABCSS*/", labviz.CSS))
 
 
 @app.get("/api/state")

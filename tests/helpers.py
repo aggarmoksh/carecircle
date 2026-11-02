@@ -27,6 +27,8 @@ def make(now_iso, all_tz=None, window=True):
     """In-memory circle at a fixed clock time. all_tz overrides every member's timezone."""
     conn = db.connect(":memory:")
     seed.init(conn)
+    conn.execute("UPDATE members SET relay_pref='everything', language='en'")   # legacy tests assume full relays; the role-based defaults are tested in test_phase4
+    conn.commit()
     clock.set(utc(now_iso), speed=0)
     if all_tz:
         conn.execute("UPDATE members SET tz=?", (all_tz,))

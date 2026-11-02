@@ -208,11 +208,12 @@ def test_range_bar_shapes():
     none = dict(test="vitamin d", value=18.0, unit="ng/mL", range_text="", parsed_low=None, parsed_high=None, status="no_range")
     assert labviz.range_bar(none) == ""
     s = labviz.range_bar(both)
-    assert "13.0" in s and "17.0" in s and "<path" in s
+    assert "13.0" in s and "17.0" in s and 'class="rb-out"' in s and "<path" in s       # hollow amber dot with a triangle
     o = labviz.range_bar(low_only)
-    assert ">60<" in o.replace(" ", "") or "60" in o
-    assert o.count("<path") == 2                          # marker + the open-end arrow
-    assert "17.0<" not in o and ">17<" not in o              # no upper-end label on an open-ended band
+    assert "60" in o and "linearGradient" in o                  # one-sided band fades to the open side
+    assert "17.0<" not in o and ">17<" not in o                 # no upper-end label on an open-ended band
+    inside = dict(both, value=15.0, status="within")
+    assert 'class="rb-in"' in labviz.range_bar(inside) and "<path" not in labviz.range_bar(inside)   # solid dot, no triangle
 
 
 def test_out_of_range_first_with_count_heading_and_words():
@@ -220,10 +221,9 @@ def test_out_of_range_first_with_count_heading_and_words():
     labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L2", "m3", "2026-10-30T00:00:00Z")
     html = labviz.section_html(labs.live_reports(conn))
     assert "4 of 9 outside the lab's printed range" in html
-    rows = re.findall(r'<tr class="(above|below|within|no_range)">', html)
-    assert rows[:4] == ["above", "below", "below", "above"] or set(rows[:4]) <= {"above", "below"}
-    assert all(r in ("within", "no_range") for r in rows[4:])
-    assert rows[-1] == "no_range"                         # vitamin d: no range printed, last, no bar
+    rows = re.findall(r'<div class="lrow (above|below|within|no_range)">', html)
+    assert set(rows[:4]) <= {"above", "below"} and rows[4] == "no_range"      # outside first, then no range printed, then the collapsed within-range rows
+    assert all(r == "within" for r in rows[5:]) and "4 within the lab's printed range</summary>" in html
     assert "no range printed" in html and "▲" in html and "▼" in html
 
 
@@ -243,10 +243,9 @@ def test_trend_with_printed_band_when_a_test_is_in_two_reports():
     conn.execute("UPDATE lab_reports SET report_date='2026-09-29' WHERE id=?", (a,))
     labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L2", "m3", "2026-10-30T00:00:00Z")
     conn.commit()
-    reps = labs.live_reports(conn)
-    out = labviz.trends_html(reps)
-    assert out.count('class="trendbox"') == 9 and "<polyline" in out and "printed range on the latest report" in out
-    assert labviz.trends_html(reps[:1]) == ""             # one report: no trend
+    out = labviz.section_html(labs.live_reports(conn))
+    assert out.count('class="spark"') >= 16 and "<polyline" in out and "rb-band" in out and 'class="lswitch"' in out
+    assert labviz.section_html(labs.live_reports(conn)[:1]).count('class="spark"') == 0       # one report: no trend
 
 
 # ---------------- demo reset ----------------
@@ -259,7 +258,7 @@ def test_demo_reset_restores_the_start_state():
     assert conn.execute("SELECT COUNT(*) c FROM dose_events").fetchone()["c"] == 0
     assert conn.execute("SELECT COUNT(*) c FROM lab_reports").fetchone()["c"] == 0
     assert [m["id"] for m in record.members(conn)] == ["m1", "m2", "m3", "m4", "m5"]
-    assert {m["relay_pref"] for m in record.members(conn)} == {"everything"}
+    assert {m["id"]: m["relay_pref"] for m in record.members(conn)} == {"m1": "daily", "m2": "everything", "m3": "daily", "m4": "everything", "m5": "daily"}
     assert record.on_duty(conn, "metformin_08:00") == "m2"
     t = demo.start_time(conn, date(2026, 11, 3))
     assert t == utc("2026-11-03T02:25:00")                 # 07:55 IST

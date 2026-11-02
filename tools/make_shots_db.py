@@ -1,32 +1,36 @@
-"""Build data/shots.db: a synthetic circle for the Phase 3 screenshots (labs with a trend, relay choices, missed doses after a scheduler run).
-Usage: python tools/make_shots_db.py   (fictional data only)"""
-import pathlib, sys
-from datetime import date
+"""Build data/shots.db: a synthetic (fictional) circle for the board and summary screenshots.
+Thursday scene, plus an earlier lab report for the trend, relay choices, a stopped member, the organiser photo, and 08:00 doses left unconfirmed so the
+scheduler runs a short ladder (a FakeChannel, nothing is sent). Usage: python tools/make_shots_db.py"""
+import json, pathlib, sys
+from datetime import datetime, timezone, timedelta
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
 import os
 os.environ["CARECIRCLE_DB"] = str(ROOT / "data" / "shots.db")
-(ROOT / "data" / "shots.db").unlink(missing_ok=True)
-from helpers import seed_d1, utc
-from app import db, seed, labs, record, escalation
+for suffix in ("", "-wal", "-shm"):
+    pathlib.Path(str(ROOT / "data" / "shots.db") + suffix).unlink(missing_ok=True)
+from helpers import FakeChannel, utc
+from app import db, seed, labs, record, escalation, demo, outbox
 from app.clock import clock
 
 conn = db.connect()
 seed.init(conn)
-clock.set(utc("2026-11-03T09:00:00"), speed=0)
-seed_d1(conn)
-# an earlier report for the trend: the same L2 tests with earlier (fictional) values
-a = labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L2", "m3", "2026-09-30T00:00:00Z")
+target = demo.scene_thursday(conn)
+a = labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L2", "m3", "2026-09-30T00:00:00Z")      # an earlier report for the trend
 conn.execute("UPDATE lab_reports SET report_date='2026-09-29' WHERE id=?", (a,))
 for test, v in (("serum creatinine", 1.2), ("tsh", 5.1), ("egfr", 55.0), ("sodium", 137.0), ("potassium", 4.6), ("blood urea", 35.0)):
     conn.execute("UPDATE lab_values SET value=? WHERE report_id=? AND test=?", (v, a, test))
-labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L2", "m3", "2026-10-30T00:00:00Z")
+tz = record.patient_tz(conn)
+thu = target.astimezone(tz).date()
+states = {k: v for k, v in json.loads((ROOT / "tests" / "organiser_real_labels_v2.json").read_text(encoding="utf-8"))["photos"]["or1"].items() if not k.startswith("_")}
+conn.execute("INSERT INTO documents(path,sender,status,type,confidence,extraction_json,created_at) VALUES(?,?,?,?,?,?,?)",
+             (str(ROOT / "media" / "organiser_real" / "or1.jpeg"), "m2", "audited", "pill_organiser", 0.97, json.dumps(states), record.iso(target.replace(minute=58) - timedelta(hours=1, minutes=-3))))
+record.set_relay_pref(conn, "m5", "stop")
+conn.execute("UPDATE members SET last_inbound_at=? WHERE kind='real'", (record.iso(target),))
 conn.commit()
-# a few confirmed doses, then the scheduler runs after days of silence: the rest become missed
-for s, d, who in (("metformin_08:00", date(2026, 11, 1), "m2"), ("aspirin_08:00", date(2026, 11, 1), "m2"), ("metformin_08:00", date(2026, 11, 2), "m2")):
-    record.add_event(conn, s, d, "confirmed", who, who, "seed", None, "2026-11-02T03:00:00Z")
-record.set_relay_pref(conn, "m1", "duties")
-record.set_relay_pref(conn, "m3", "daily")
-record.add_task(conn, "Discuss the lab report from 29 Oct with the doctor", "m3", "lab report", "2026-10-30T00:00:00Z")
-escalation.settle_missed(conn, clock.now())
-print("shots.db ready")
+clock.set(target + timedelta(minutes=30), speed=0)                         # 08:25 patient-local: the 08:00 doses are past due + grace
+ob = outbox.Outbox(conn, FakeChannel())
+for _ in range(6):
+    escalation.tick(conn, ob)
+    clock.set(clock.now() + timedelta(seconds=61), speed=0)
+print("shots.db ready at", clock.now().astimezone(tz).strftime("%a %H:%M"))

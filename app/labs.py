@@ -86,7 +86,11 @@ def report(conn, rid):
     if not r:
         return None
     d = dict(r)
-    d["tests"] = [dict(x, parsed_low=x["range_low"], parsed_high=x["range_high"]) for x in conn.execute("SELECT * FROM lab_values WHERE report_id=? ORDER BY id", (rid,))]
+    # status and parsed range are computed here from the value and the printed range text, every time; the stored columns are never shown
+    d["tests"] = []
+    for x in conn.execute("SELECT * FROM lab_values WHERE report_id=? ORDER BY id", (rid,)):
+        low, high = parse_range(x["range_text"])
+        d["tests"].append(dict(x, parsed_low=low, parsed_high=high, range_low=low, range_high=high, status=status(x["value"], x["range_text"])))
     return d
 
 
@@ -98,8 +102,8 @@ def load_fixture(conn, labels_path, key, by, now_iso):
     """Seed a live report from tests/lab_labels.json (not from extraction). Status is computed by code from the printed range text."""
     d = json.loads(open(labels_path, encoding="utf-8").read())["reports"][key]
     tests = [dict(t, parsed_low=t["range_low"], parsed_high=t["range_high"], status=status(t["value"], t["range_text"])) for t in d["tests"]]
-    cur = conn.execute("INSERT INTO lab_reports(doc_id,lab,report_date,status,confirmed_by,confirmed_at,created_at) VALUES(NULL,?,?,?,?,?,?)",
-                       (d["lab"], d["report_date"], "live", by, now_iso, now_iso))
+    cur = conn.execute("INSERT INTO lab_reports(doc_id,lab,report_date,status,confirmed_by,confirmed_at,created_at,origin) VALUES(NULL,?,?,?,?,?,?,?)",
+                       (d["lab"], d["report_date"], "live", by, now_iso, now_iso, "demo seed (fictional)"))
     insert_values(conn, cur.lastrowid, tests)
     conn.commit()
     return cur.lastrowid

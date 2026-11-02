@@ -289,7 +289,7 @@ def week_compare(conn, states, now):
             rest_skipped = all(x == "skipped" for x in sts if x != "given")
             label = f"{DAY_NAMES[dn]} {part}"
             if states[comp] == "full" and given < len(per) and not rest_skipped:
-                out.append((comp, f"{label} is still full; no confirmation was logged"))
+                out.append((comp, f"{label} is still full in the organiser: that dose wasn't given"))
             elif states[comp] == "empty" and given < len(per):
                 out.append((comp, f"{label} is empty but " + ("no confirmation was logged" if given == 0 else "only some doses were confirmed")))
     return out

@@ -57,3 +57,12 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 - Missed dose: after due + grace a dose shows "overdue, escalating"; it becomes "missed" when its escalation ladder is exhausted or when the next dose of the same medicine falls due, whichever comes first.
 - Units are kept as printed and never converted (tsf, tbsp, sachet; anything else is "other" with the printed unit). Found on P8 doc 1: "2 TSF" was read as "2.0 mL".
 - Handwriting rule: the classifier sets has_handwriting; on a handwritten document every medicine line is marked unsure whatever the per-line legibility, so a member confirms each name before YES.
+
+## Phase 4 decisions
+- Lab status is computed by code from value and printed range every time it is read (labs.report), never stored or copied. Demo-seed reports carry origin "demo seed (fictional)", shown on the board and summary.
+- A task made from a member's own message (source "medical question" or "correction") may be named, medicine included, in messages that carry that task's text. The fallback sentence stays for everything else.
+- A message that reports a past action and has no question mark is a dose report: it overrides a record_question or other routing (code, logged as intent_override).
+- Default relay choice: nearby (hands_on) members "everything"; remote members "alerts and a daily summary" (relay_pref daily). Change in demo reset and seed only.
+- Board and summary follow docs/DESIGN.md; the doctor summary is one page, trends are board-only.
+- Demo scene: tools/demo_reset.py --scene thursday (Thursday 07:55, Wednesday 20:00 recorded as missed, or1.jpeg from r2 reports Wednesday PM).
+- Replies in a member's language (members.language, m2 = hi): Spark rewrites the English reply; code checks that every name and number is unchanged, the guard runs on the result, otherwise English is sent.

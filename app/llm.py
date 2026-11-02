@@ -6,7 +6,7 @@ from openai import OpenAI
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 BASE = "https://api.meta.ai/v1"
-CAP = 5.00
+CAP = 7.00
 PRICE_IN, PRICE_OUT, PRICE_SAM = 1.25 / 1e6, 4.25 / 1e6, 2.50 / 1000
 SPEND = ROOT / "outputs" / "spend.json"
 FORBIDDEN = "contributor"

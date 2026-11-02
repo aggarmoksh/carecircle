@@ -15,6 +15,9 @@ def init(conn):
     conn.execute("INSERT INTO circle(name,patient_name,patient_tz) VALUES(?,?,?)", ("Nanaji's circle", config.PATIENT_NAME, config.PATIENT_TZ))
     for mid, name, rel, tz, role, kind, ridx in MEMBERS:
         conn.execute("INSERT INTO members(id,name,relationship,tz,role,kind,recipient_idx) VALUES(?,?,?,?,?,?,?)", (mid, name, rel, tz, role, kind, ridx))
+    # default relay choice: nearby members get everything; remote members get alerts and a daily summary
+    conn.execute("UPDATE members SET relay_pref=CASE role WHEN 'remote' THEN 'daily' ELSE 'everything' END")
+    conn.execute("UPDATE members SET language='hi' WHERE id='m2'")                              # Meena reads Hindi; everyone else English
     conn.execute("INSERT INTO rota(period,member_id) VALUES('morning','m2')")
     conn.execute("INSERT INTO rota(period,member_id) VALUES('evening','m4')")
     conn.commit()

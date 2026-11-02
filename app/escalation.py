@@ -34,8 +34,8 @@ def _ladder(conn, slot):
 
 
 def _logged(conn, slot, d, mid, why):
-    return conn.execute("SELECT 1 FROM audit_log WHERE kind='escalation_skip' AND actor=? AND detail=?",
-                        (mid, f"{slot} {d}: {why}")).fetchone() is not None
+    return conn.execute("SELECT 1 FROM audit_log WHERE kind='escalation_skip' AND actor=? AND detail LIKE ?",
+                        (mid, f"{slot} {d}: {why.split(' (')[0]}%")).fetchone() is not None
 
 
 def tick(conn, outbox):

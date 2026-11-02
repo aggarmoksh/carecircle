@@ -1,5 +1,5 @@
 """Every outbound message goes through here: guard check, 24 h window check, send, audit with a reason. Also relay and queue."""
-from . import config, guard, record
+from . import config, guard, lang, record
 from .clock import clock
 from .db import audit
 
@@ -27,8 +27,10 @@ class Outbox:
         if not record.window_open(m, now):
             audit(self.conn, "send_skipped", member_id, "24h window closed (template required)", reason)
             return None
+        english = text
+        text, used = lang.localize(self.conn, text, m)
         res = self.channel.send_text(m, text)
-        audit(self.conn, "outbound", member_id, {"text": text, "sid_prefix": str(res.get("sid", ""))[:6]}, reason)
+        audit(self.conn, "outbound", member_id, dict({"text": text, "sid_prefix": str(res.get("sid", ""))[:6]}, **({"language": used, "english": english} if used != "en" else {})), reason)
         self.sent.append((member_id, text))
         return text
 

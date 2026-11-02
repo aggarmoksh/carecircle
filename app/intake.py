@@ -140,7 +140,7 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
         for comp, sentence in diffs:
             audit(conn, "organiser_disagreement", mid, f"{comp} {states[comp]}, {sentence.split('; ')[-1] if '; ' in sentence else sentence}", "organiser vs record")
         if diffs:
-            _send(ob, mid, "Compared with the record this week:\n" + "\n".join("- " + s for _, s in diffs), "organiser disagreements with the record")
+            _send(ob, mid, diffs[0][1] + "." if len(diffs) == 1 else "Compared with the record this week:\n" + "\n".join("- " + s for _, s in diffs), "organiser disagreements with the record")
         else:
             audit(conn, "organiser_ok", mid, f"doc {doc}", "organiser agrees with the record")
             _send(ob, mid, "The organiser agrees with the record for this week so far.", "organiser matches record")
@@ -176,6 +176,9 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
 
 
 # ---------------- text ----------------
+PAST_ACTION = re.compile(r"\b(took|taken|gave|given|de di|dedi|diti|diya|le li|leli|khali|kha li|khaa li)\b|दे दी|दे दिया|दिया|दी\b|ले ली|लिया|खा ली|खा लिया|खाई|ਦਿੱਤ|ਦਿਤ|ਦੇ ਦਿ|ਲੈ ਲ|ਖਾ ਲ|ਖਾਧ", re.I)
+
+
 def _text(conn, ob, mid, text, via="text"):
     now = clock.now()
     low = re.sub(r"[^a-z ]", "", text.lower()).strip()
@@ -217,6 +220,9 @@ def _text(conn, ob, mid, text, via="text"):
         return "relay_choice"
     intent, _, _ = llm.spark_json("phase1", "intent", [{"role": "user", "content": INTENT_PROMPT.format(draft="pending" if has_draft else "not pending", text=text)}], INTENT_SCHEMA)
     intent = intent["intent"]
+    if intent in ("record_question", "other") and "?" not in text and "？" not in text and PAST_ACTION.search(text):
+        audit(conn, "intent_override", mid, {"from": intent, "to": "dose_update"}, "a message that reports a past action and asks nothing is a dose report")
+        intent = "dose_update"
     audit(conn, "intent", mid, {"intent": intent, "via": via}, "classified by model; routing is code")
     {"dose_update": _dose, "record_question": _qa, "correction": _correction, "volunteer": _volunteer,
      "medical_question": _medical, "urgent_symptom": _urgent, "relay_choice": _relay_choice}.get(intent, _other)(conn, ob, mid, text, now)
