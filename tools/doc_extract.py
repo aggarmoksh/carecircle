@@ -4,6 +4,7 @@ Usage:  python tools/doc_extract.py IMAGE_PATH OUTPUT_FOLDER [--lab]
   - runs the Phase 0 P1 discharge extraction, or the P7 lab-report extraction with --lab (status computed by code from the printed range)
   - never writes to the repo, the database, the spend file or any log; the image is resized in memory, never saved
   - needs MODEL_API_KEY in the environment (it does not read .env or any other file)
+  - optional --name=FILE.json sets the output file name (default <image name>.meds.json)
   - prints nothing but the output path"""
 import base64, io, json, os, pathlib, sys
 
@@ -14,6 +15,7 @@ from app import prompts, labcore  # pure modules: constants and range logic, no 
 
 def main(argv):
     args = [a for a in argv if not a.startswith("--")]
+    name = next((a[7:] for a in argv if a.startswith("--name=")), None)
     lab = "--lab" in argv
     if len(args) != 2:
         sys.exit(2)
@@ -39,7 +41,7 @@ def main(argv):
     if lab:
         data = labcore.finish(data)
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / (src.stem + (".lab" if lab else ".meds") + ".json")
+    out = out_dir / (name or (src.stem + (".lab" if lab else ".meds") + ".json"))
     out.write_text(json.dumps(dict(kind="lab_report" if lab else "discharge_sheet", extraction=data,
                                    usage=dict(prompt_tokens=r.usage.prompt_tokens, completion_tokens=r.usage.completion_tokens)), indent=1, ensure_ascii=False), encoding="utf-8")
     print(out)

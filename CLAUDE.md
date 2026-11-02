@@ -46,3 +46,10 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 
 ## Pitfalls
 - AI-generated organiser images are for wiring only; never present them as real photos in the demo or submission.
+
+## Phase 3 decisions (pre-registered rules, applied mechanically to the P3-real results)
+- Organiser judge: Spark alone must read >= 13/14 labelled compartments on >= 7/8 real photos (tests/organiser_real_labels_v2.json). Result: 8/8 photos at 14/14, so Spark stays the judge. AUDIT-RED is not flagged. If this ever fails, the organiser feature makes no claims and replies "I couldn't read this photo reliably".
+- SAM overlays: kept only if all 14 labelled compartments are mapped on >= 7/8 photos. Result: 2/8, so SAM overlays are dropped from the board and intake; the submission says Spark judges alone. SAM-HELPS: not flagged (SAM pipeline never beat Spark alone by 2 compartments).
+- The tray has 16 compartments; the unlabelled spare row or column is never scored.
+- Lab values are compared only with the range printed on the same report, by code. No words like normal, abnormal, danger, risk, good or bad anywhere in the board or the summary.
+- A member who writes STOP receives nothing (relays, nudges, alerts) until they write again; the escalation ladder skips them and logs why.

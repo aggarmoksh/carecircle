@@ -65,7 +65,7 @@ function render(s){
  fill($('organiser'),o?[h('div',{class:'mut'},'Document '+o.doc+' · '+o.at),
    o.mismatches.length?h('ul',null,o.mismatches.map(m=>h('li',null,m.text))):h('div',null,'The organiser agrees with the record.'),
    h('div',{class:'imgs'},h('div',null,h('div',{class:'mut'},'Photo'),h('img',{class:'org',src:'/api/doc/'+o.doc+'/photo?token='+encodeURIComponent(TOKEN)})),
-    o.has_overlay?h('div',null,h('div',{class:'mut'},'SAM overlay (evidence only)'),h('img',{class:'org',src:'/api/doc/'+o.doc+'/overlay?token='+encodeURIComponent(TOKEN)})):h('div',{class:'mut'},'No overlay stored (SAM did not return exactly 14 masks).'))]:h('div',{class:'mut'},'No organiser photo yet.'));
+    h('div',{class:'mut'},'Compartments are judged from the photo by the model alone; no segmentation overlay is shown.'))]:h('div',{class:'mut'},'No organiser photo yet.'));
  $('labs').innerHTML=s.lab_html;
  fill($('tasks'),s.tasks.length?h('ul',null,s.tasks.map(t=>h('li',null,t.text,' ',h('span',{class:'mut'},'· '+(t.owner||'nobody yet'))))):h('div',{class:'mut'},'No open tasks.'));
  fill($('audit'),h('tr',null,h('th',null,'Time (UTC)'),h('th',null,'Event'),h('th',null,'Who'),h('th',null,'Detail')),s.audit.map(a=>h('tr',null,h('td',null,a.at.slice(0,19).replace('T',' ')),h('td',null,a.kind),h('td',null,a.actor||''),h('td',{class:'mut'},a.detail))));

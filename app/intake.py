@@ -128,14 +128,10 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
         _send(ob, mid, "Here's what I read:\n" + "\n".join(summ) + extra + "\nReply YES to start this schedule, or tell me what's wrong.", "draft summary sent for confirmation")
     elif typ == "pill_organiser":
         states = vision.organiser_states(prepped, doc)
-        n, overlay = 0, None
-        try:
-            n, overlay = vision.sam_overlay(prepped, doc, ROOT / "data" / "overlays" / f"doc{doc}.jpg")
-        except Exception as e:  # SAM is evidence only; never block the audit
-            audit(conn, "sam_error", mid, type(e).__name__, "SAM evidence overlay failed")
-        conn.execute("UPDATE documents SET extraction_json=?, overlay_path=?, status='audited' WHERE id=?", (json.dumps(states), overlay, doc))
+        # Phase 3 decision (P3-real, 8 photos): Spark alone read 14/14 on all 8, SAM mapped all 14 compartments on 2 of 8, so SAM overlays are dropped
+        # and Spark judges alone.
+        conn.execute("UPDATE documents SET extraction_json=?, status='audited' WHERE id=?", (json.dumps(states), doc))
         conn.commit()
-        audit(conn, "organiser_sam", mid, {"doc": doc, "masks": n, "overlay_stored": bool(overlay)}, "SAM overlay stored only when exactly 14 masks")
         if not record.slots(conn):
             _send(ob, mid, "I need a confirmed schedule before I can compare the organiser with the record.", "organiser without schedule")
             return
