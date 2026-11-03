@@ -25,7 +25,8 @@ thu = target.astimezone(tz).date()
 states = {k: v for k, v in json.loads((ROOT / "tests" / "organiser_real_labels_v2.json").read_text(encoding="utf-8"))["photos"]["or1"].items() if not k.startswith("_")}
 conn.execute("INSERT INTO documents(path,sender,status,type,confidence,extraction_json,created_at) VALUES(?,?,?,?,?,?,?)",
              (str(ROOT / "media" / "organiser_real" / "or1.jpeg"), "m2", "audited", "pill_organiser", 0.97, json.dumps(states), record.iso(target.replace(minute=58) - timedelta(hours=1, minutes=-3))))
-record.set_relay_pref(conn, "m4", "stop")
+if os.environ.get("SHOT_SUNITA_STOP", "1") == "1":
+    record.set_relay_pref(conn, "m4", "stop")        # (the README images leave Sunita on "everything", so the ladder asks her before Arjun)
 conn.execute("UPDATE members SET last_inbound_at=? WHERE kind='real'", (record.iso(target),))
 conn.commit()
 # translations are canned here (no model calls for the screenshots); they are the kind of text the real run produced (outputs/p4b_*.json)
@@ -37,9 +38,15 @@ from app import llm
 llm.spark_json = lambda ph, lb, m, sc: ({"text": CANNED.get(m[0]["content"].split('Message: "', 1)[1].rsplit('"', 1)[0], "")}, 0, 0)
 clock.set(target, speed=0)                                                 # 07:55 patient-local
 ob = outbox.Outbox(conn, FakeChannel())
-ob.relay("CareCircle: metformin, atorvastatin 20:00 for Nanaji is recorded as missed.", [], "state change: dose missed", kind="alert")
-clock.set(target + timedelta(minutes=30), speed=0)                         # 08:25 patient-local: the 08:00 doses are past due + grace
-for _ in range(6):
+ob.relay_t("missed", dict(patient="Nanaji", meds=["metformin", "atorvastatin"], time="20:00"), [], "state change: dose missed", kind="alert")
+# order of the medicines on the sheet (fictional data): amlodipine first, so the board's lead dose is the first of the 08:00 group
+conn.execute("UPDATE schedule_lines SET id=id+100 WHERE med_id=(SELECT id FROM medications WHERE name='metformin')")
+conn.commit()
+# the first tick is at 08:28:29 and the fourth at 08:31:32 (03:01 in London); ticks are 61 s apart: nudge Meena, ask Sunita (or skip her if she chose STOP) and Arjun, then skip Kabir and Sofía while they sleep
+TICKS = int(os.environ.get("SHOT_TICKS", "3"))
+clock.set(target + timedelta(minutes=33, seconds=29), speed=0)                  # 08:28:29: the first tick
+for i in range(TICKS):
     escalation.tick(conn, ob)
-    clock.set(clock.now() + timedelta(seconds=61), speed=0)
-print("shots.db ready at", clock.now().astimezone(tz).strftime("%a %H:%M"))
+    if i < TICKS - 1:
+        clock.set(clock.now() + timedelta(seconds=61), speed=0)
+print("shots.db ready at", clock.now().astimezone(tz).strftime("%a %H:%M:%S"))

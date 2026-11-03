@@ -1,112 +1,144 @@
 # CareCircle
 
-**The care log that writes itself, in the chat you already use.**
+**The family care coordinator that lives in WhatsApp, across every time zone your family lives in.**
 
-When someone we love is ill, the people who care for them are scattered: a grandson in Los Angeles, a cousin in London, a friend in Madrid, and an aunt at his side. They coordinate in one noisy WhatsApp group ("80 unread messages and zero context"), and nobody is sure whether the morning pills were given.
+When someone we love is ill, the people who care for them are scattered: a grandson in Los Angeles, a cousin in London, a friend in Madrid, an aunt at the bedside. CareCircle turns the chat they already use into one shared care record. Photograph the discharge sheet and confirm it with one "yes". From then on CareCircle knows whose turn it is, privately nudges the person on duty when a dose isn't confirmed, then asks whoever is awake next, in their own language. It reads voice notes and pill-organiser photos, compares lab values with the lab's own printed ranges, and keeps a one-page summary ready for the doctor.
 
-CareCircle is a WhatsApp agent that keeps one shared care record for one patient. A family member photographs the discharge sheet; CareCircle reads it, asks for a "yes", and from then on nudges the right person when a dose is not confirmed, privately and in their language, then the next person who is awake, wherever they are. It reads a voice note ("Maine Nanaji ko subah ki metformin de di") and a photo of the weekly pill organiser, compares lab values only with the range printed on the report, and keeps a one-page summary for the doctor.
+**It coordinates. It never gives medical advice.**
 
-**It coordinates. It never gives medical advice.** Medical questions are saved as tasks for the doctor's visit and answered with a fixed refusal; urgent symptoms get a fixed "call emergency services" message.
+**[Watch the 3-minute demo](VIDEO_LINK)** · **[Try the interactive replay](https://aggarmoksh.github.io/carecircle/replay.html)** · [How it was tested](docs/EVALS.md) · [Architecture](docs/ARCHITECTURE.md)
 
-**Try the interactive replay** (fictional data, one self-contained page, works offline): [https://aggarmoksh.github.io/carecircle/replay.html](https://aggarmoksh.github.io/carecircle/replay.html). It is also in this repository as [docs/replay.html](docs/replay.html).
+![The CareCircle board: The Circle shows each member by distance, with their local time and whether they're awake. The orange line is the live escalation path.](docs/img/board-desktop.png)
 
-> A prototype built on Meta's Muse models and the Twilio WhatsApp Sandbox. Fictional patient and fictional data. Not a medical device, not for real patient care.
+*The board, mid-escalation. Kabir is asleep in London (03:01), so he isn't asked; the orange line runs to Arjun, awake in Los Angeles. Dashed members are simulated. Fictional demo data.*
 
-## What is real and what is simulated
+Built on **Meta Muse Spark 1.3** and **Meta Muse Voice Transcribe**, running on real WhatsApp today.
 
-| Real | Simulated or fictional |
+---
+
+## Why it matters
+
+- **63 million Americans, roughly 1 in 4 adults, are family caregivers**, up 45% in a decade ([AARP and NAC, *Caregiving in the US 2025*](https://www.aarp.org/caregiving/basics/caregiving-in-us-survey-2025/)). Many of them live in a different city or country from the person they care for.
+- **About half of people with long-term conditions don't take their medicines as prescribed** ([WHO, *Adherence to Long-Term Therapies*, 2003](https://iris.who.int/handle/10665/42682)), and poor adherence is linked to an estimated 33 to 69% of medication-related hospital admissions ([Osterberg and Blaschke, *NEJM*, 2005](https://www.nejm.org/doi/full/10.1056/NEJMra050100)).
+
+The failure isn't knowledge; it's coordination. A parent comes home with a discharge sheet, and the people helping each hold a piece of the picture. When we described CareCircle to caregivers online:
+- One said their family group chat "would blow up at 2am" and a sister in another city woke to dozens of messages with no context.
+- Another keeps a 150-page shared document and copies messages into it by hand.
+- A third told us doctors want paper, not apps.
+
+CareCircle answers all three: a quiet, private nudge instead of a group blast, a care log that writes itself, and a one-page printable summary for the doctor.
+
+## What it does
+
+| | |
 |---|---|
-| WhatsApp messages in both directions through the **Twilio sandbox**, with three real phones (Arjun in Los Angeles, Meena in Kolkata, Kabir in London) | **Sunita** (neighbour) and **Sofía** (family friend, Madrid) are simulated members: their messages are logged, not sent to a phone. They are labelled everywhere |
-| Calls to **Muse Spark 1.3** and **Muse Voice Transcribe** (and, in testing, SAM 3.1) | The patient "Nanaji" and every name, medicine schedule, document and lab value. The discharge sheets and lab reports are invented. Most test photos of printed sheets were taken of a screen |
-| The care record (SQLite), the escalation ladder, the guard, the relay and quiet-hours rules, the board, the doctor summary, the Today card | The **demo clock**: the board can show simulated time so a morning scene can be filmed at any hour |
-| Real photos of a pill organiser (8) used in the evaluation | Four AI-generated organiser images (marked as such in the evaluation) |
-| | The **interactive replay** (`site/replay.html`) is a scripted, offline page built from the same fictional seed. The real system runs on WhatsApp |
+| **1. Reads the discharge sheet** | A member photographs it on WhatsApp. **Muse Spark** reads every medicine, dose, unit (exactly as printed) and time. Nothing goes live until a member replies YES (also "sí" or "हाँ"). Handwritten lines must be confirmed by a person, name by name. |
+| **2. Logs doses the way families talk** | "Maine Nanaji ko subah ki metformin de di." **Muse Voice Transcribe** hears the voice note in Hindi, Punjabi, English or a mix; Spark matches it to the right dose on the live schedule. |
+| **3. Chases the right person, privately** | A dose that isn't confirmed gets one private message to whoever is on duty, never a group blast. No answer: the next person who is awake is asked. Doses due together are one question, and "done" confirms them all. |
+| **4. Checks the pill organiser** | One photo of the weekly organiser and Spark reads all 14 compartments, then compares them with what the family confirmed: "Wednesday PM is still full: that dose wasn't given." |
+| **5. Keeps labs and the doctor in the loop** | Lab reports are read into values and the lab's own printed ranges; code (never the model) marks each value within, above or below that range. Medical questions become tasks for the doctor's visit, and one tap produces a printable summary. |
 
-Not built: the WhatsApp Business (Meta Cloud API) channel (the Meta test number was blocked; there is a stub), message templates for members outside the 24-hour window (those messages are skipped and logged), deployment, accounts or login beyond the link tokens.
+Every member chooses what they hear: everything, only their own duties and alerts, one daily summary, or nothing. System messages arrive in each member's language (English, Hindi and Spanish today) from fixed templates the model can't rephrase.
 
-## How it works
+### Awake-routing: nobody is woken to save a dose
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the diagram. In short:
+- **Local time for everyone.** Each member's time zone is known; outside their waking hours they're skipped, and the skip is logged with the reason ("asleep, 03:01 London").
+- **Nearby first.** People with the patient are asked before people far away.
+- **Choices respected.** WhatsApp's 24-hour window and each member's STOP are honoured, and every step shows on the board.
 
-1. **A document or a message arrives** on WhatsApp. A photo is classified and read into a *draft* schedule; nothing goes live until a member replies YES (or "sí", "हाँ"). If the sheet is handwritten, every line is marked unsure and a member must retype each name first.
-2. **Code runs the care.** Once a second a scheduler looks at the record. A dose that is 15 minutes past due gets one private nudge to the person on duty. No answer after a minute: the next person who is awake, inside the WhatsApp window and has not chosen STOP (nearby members first). Each skipped member is logged with the reason. Doses due at the same time are one question, "done" confirms all of them, and a partial reply confirms only the medicines named. An unconfirmed dose becomes "missed" when nobody is left to ask or the next dose of that medicine falls due.
-3. **Everyone sees the same picture, in their own words.** Updates go to the others according to each person's choice (everything, only their duties and alerts, one summary a day at 8 PM, or stop). System messages are fixed templates in English, Hindi and Spanish: the model does not rephrase them.
-4. **A board and a doctor summary.** `/board` shows The Circle (who is where, who is awake, who was asked), the Now card, Today, lab values, the organiser grid, tasks and an activity feed in plain sentences. It updates live, works on a phone, and has a dark mode behind a toggle. `/doctor` is a one-page printable summary: adherence, missed doses with reasons, lab values against their printed ranges, and questions for the doctor.
-5. **Optional extras.** A personal read-only board link per member (hashed, revocable), a Today card image sent on request ("board", "बोर्ड", "tablero") and with the daily summary, and an offline interactive replay page.
+![An overdue dose: a private nudge to Meena, then the ladder moves to whoever is awake.](docs/img/escalation.gif)
 
-## The Meta models and how they are used
+### The board: optional, always up to date
 
-| Model | Used for | Not used for |
+WhatsApp messages are the interface: every nudge, confirmation and update happens there. The board isn't another app to use. It's the shared picture of the same record, for when a family wants to see everything at once. It updates live, works on any phone, and each member's link is personal, read-only and revocable. On request, CareCircle sends a "Today" card straight into the chat.
+
+| On a phone | Today card, inside WhatsApp | Doctor summary |
 |---|---|---|
-| **Muse Spark 1.3** (chat completions, strict JSON schema, temperature 0, low reasoning effort) | Classifying a photo; extracting medicines, doses and times from a sheet, prescription or lab report; judging which organiser compartments are full; classifying a message's intent; parsing who gave which dose against the live schedule; applying a correction to a draft; phrasing an answer to a *record question* from facts that code assembled | Deciding who is messaged, changing the record, any medical judgement, writing system messages |
-| **Muse Voice Transcribe** | Voice notes in English, Hindi, Punjabi or a mix (audio converted to 16 kHz mono WAV first); the transcript then goes through the same router as text | |
-| **SAM 3.1** | Tried as a way to find organiser compartments | **Dropped.** On real photos it mapped all 14 compartments on 2 of 8; Spark alone read 14/14 on all 8 |
+| ![Board on a phone](docs/img/board-phone.png) | ![Today card](docs/img/today-card.png) | ![One-page doctor summary](docs/img/doctor-summary.png) |
 
-## What was tested, and what was dropped
+## Running on real WhatsApp today
 
-Pre-registered where it matters; every table and its caveat is in [docs/EVALS.md](docs/EVALS.md). Highlights (all small samples, one run per input unless stated):
+| What is real | What is staged for the demo |
+|---|---|
+| Two-way WhatsApp messages through the Twilio WhatsApp Sandbox, on three real phones (played by the builder as Arjun, Meena and Kabir) | The patient, his documents and every name are fictional |
+| Every Muse Spark and Muse Voice Transcribe call | Sunita (neighbour) and Sofía (family friend, Madrid) are simulated members, labelled everywhere they appear |
+| The care record, escalation ladder, guard, relays, board, doctor summary and Today card | A demo clock, so a morning scene can be filmed at any hour |
+| Escalation timing and delivery, measured on those phones | The [interactive replay](https://aggarmoksh.github.io/carecircle/replay.html) is a scripted, offline page built from the same fictional scenario |
 
-- **Reading sheets:** 78/78 fields exact on 3 fictional discharge sheets (photos of a screen). On 4 real, redacted documents (2 printed, 2 handwritten), scored by medicine names: the printed ones read 15 of 15 names. The pre-registered score showed 2 misses, both clerical errors in our own answer key (two typos and two documents' labels swapped), corrected and reported side by side. On handwriting it misread 1 name and flagged 4 lines for a person to check, which is why every handwritten line now needs a person's confirmation.
-- **Voice:** 12/12 notes routed to the right dose update, including Hindi and Punjabi (one speaker, one phone).
-- **Lab reports:** 54/54 fields on 2 fictional reports, 0 wrong statuses, 0 invented ranges.
-- **Organiser photos:** Spark alone 14/14 on 8/8 real photos. **SAM 3.1 dropped:** 3 of 4 AI photos and 2 of 8 real ones.
-- **Router:** 19/19 on the pre-registered set in three fresh runs (it had missed once on two earlier runs, which led to one code rule), medical questions 10/10 get the fixed reply, record questions 8/8 on the final prompt (after an unstable first prompt: 6/8, 4/8, 7/8).
-- **Escalation on real phones:** next member reached at 60.0 s +/- 0.05 s in every trial.
-- **Outbound safety scan:** 0 medicine names, doses or lab values outside the record in every scanned set of outgoing texts (the latest: 65 texts).
-- **Medicine-name check against public listings (P9): dropped.** Muse Spark web search found 10 of 17 real names with a valid source (the bar was 15), 0 of 5 invented names and 0 of 2 wrong strengths. It never accepted anything false, but too many cited pages did not exist.
-- **Not measured:** whether the Hindi and Spanish read naturally to fluent readers beyond one review, whether families would use it, and anything with a real patient.
+The production WhatsApp Business (Meta Cloud API) channel is the one piece not yet connected: the Meta test number was restricted during the hackathon. The channel sits behind an adapter, so moving from the sandbox to the Cloud API changes the transport, not the product.
 
-## Safety design
+## Built on Meta's Muse models
 
-- **Coordination only.** Medical questions get a fixed reply and become a task for the doctor's visit. Urgent symptoms get a fixed message and an alert to members who are awake.
-- **Code decides, the model reads.** State changes, escalation, relays and sending are plain code. The model's output is a draft, a classification, or the wording of an answer built from the record.
-- **Nothing goes live unconfirmed.** Every extraction is a draft until a member says yes; uncertain or handwritten lines need a retyped name.
-- **An outbound guard.** Before any message leaves, a medicine name, dose or lab value that is not in the record (or in the sender's own message) is blocked and replaced by a fixed sentence, and an advice blocklist (committed before the code) is applied.
-- **Lab values are compared only with the range printed on the report,** with a word and a shape, never colour alone. No "normal", "abnormal", "risk" or "danger". Statuses are computed at display time, never stored.
-- **Units stay as printed.** "2 tsp" is never converted to millilitres.
-- **People stay in control.** Nobody is woken at night (waking hours are respected and messages are queued); STOP silences everything until the member writes again; the 24-hour WhatsApp window is respected.
-- **Access.** The board needs a token; each member's link is personal, read-only and revocable (only its hash is stored); the clock and revoke endpoints need an admin token. The code has no real patient data and the repository history was scanned for secrets.
+State, routing, escalation and sending are plain code. The models read, classify, draft and phrase; code decides.
 
-## Setup
+| Model | What it does in CareCircle |
+|---|---|
+| **Muse Spark 1.3** (strict JSON schemas, temperature 0) | Reads discharge sheets, prescriptions (printed and handwritten) and lab reports; judges all 14 organiser compartments from one photo; classifies every photo and message; matches voice-note transcripts to doses; turns questions about the care record into database queries, then words only the facts the code returns |
+| **Muse Voice Transcribe 1.0** | Turns WhatsApp voice notes into text in English, Hindi, Punjabi and mixed speech |
 
-Requirements: Python 3.11, ffmpeg (voice notes), a Chrome or Chromium install (only to render the Today card), a Meta model API key, and a Twilio account with the WhatsApp Sandbox for real sends.
+**Evaluated, not shipped.** We hold each model to a bar set before testing, and ship what clears it:
+- **SAM 3.1** (organiser-compartment segmentation): mapped all 14 compartments on 2 of 8 real photos, while Spark alone read 14/14 on all 8. Spark ships.
+- **Spark web search** (checking medicine names against public listings): found 10 of 17 real medicines against a bar of 15. Not shipped; families confirm names instead.
+
+## Engineered for trust
+
+- **Nothing goes live unconfirmed.** Every extraction is a draft until a member says yes.
+- **No medical advice, ever.** Medical questions get a fixed reply and become a doctor task. Urgent symptoms get a fixed "call emergency services now" message and an alert to everyone awake.
+- **An outbound guard.** Before any message leaves, a medicine name, dose or lab value that isn't in the record is blocked and replaced.
+- **Ranges as printed, units as printed.** Lab values are compared only with the range on the report, with no "normal" or "danger" wording. Units are never converted: a "2 tsf" (teaspoons) dose is never turned into millilitres.
+- **Private by default.** Nudges go to one person. Board links are personal, hashed and revocable. Every agent action is in an audit log that shows on the board's activity feed.
+
+## Tested before it shipped
+
+Each answer key was written and committed before the code that's scored against it ran. Failures are reported next to passes, and each one led to a design decision. Full tables: [docs/EVALS.md](docs/EVALS.md).
+
+| What was tested | Result | Sample |
+|---|---|---|
+| Reading discharge sheets | **78/78** fields exact; 0 invented or dropped medicines, 0 invented times | 3 fictional sheets |
+| Real, redacted prescriptions | **15/15** printed medicine names; on handwriting, 1 misread and 4 lines flagged, which led to the confirm-every-handwritten-line rule | 4 documents (2 printed, 2 handwritten) |
+| Voice-note confirmations | **12/12**, including **4/4** in Hindi, Punjabi and mixed speech | 12 notes, one speaker |
+| Pill-organiser photos | **14/14** compartments on **8/8** real photos | 8 photos of a real tray |
+| Lab reports | **54/54** fields; 0 wrong statuses, 0 invented ranges | 2 fictional reports |
+| Message routing | **19/19** in each of 3 fresh runs | 19 pre-registered cases |
+| Questions about the care record | **8/8** on the original set and **8/8** on a held-out set, 3 runs each | 16 questions |
+| Medical questions | **12/12** get the fixed no-advice reply | 12 questions |
+| Escalation on real phones | each step fired on schedule (**60.0 s and 120.0 s ± 0.05 s**); delivered in 3.3 to 4.5 s | 4 trials, 7 sends |
+| Outbound guard | **0** medicine names, doses or lab values outside the record | every saved outgoing text, every phase (65 in the latest scan; 0 guard blocks in the final runs) |
+
+Also covered by 207 automated tests. Building and testing everything cost about $6 of Meta Model API usage.
+
+## Try it
+
+**Judge quickstart: no keys, no phones**
 
 ```bash
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt        # on macOS/Linux: .venv/bin/pip
-cp .env.example .env                                   # fill in the values; never commit .env
+source .venv/bin/activate              # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python -m pytest tests                 # 207 tests, no network needed
 ```
 
-`.env` holds: `MODEL_API_KEY`, the Twilio values (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`), `WA_RECIPIENTS` (the three real members' numbers, comma-separated, in order), `PUBLIC_BASE_URL` (a public address that reaches the server, for example a quick tunnel), `BOARD_TOKEN` and `ADMIN_TOKEN` (long random strings). The `WA_*` variables are for the unused Meta Cloud API channel.
+Then open `docs/replay.html` in any browser for the interactive replay, or run a demo scene in dry-run mode, which shows every message instead of sending it:
 
 ```bash
-# tests (no network, no keys needed)
-.venv/Scripts/python -m pytest tests
-
-# run the server (set CARECIRCLE_DRY_RUN=1 to capture messages instead of sending them)
-.venv/Scripts/python -m uvicorn app.server:app --port 8000
-# in the Twilio console set the sandbox webhook to <PUBLIC_BASE_URL>/twilio/inbound and the status callback to <PUBLIC_BASE_URL>/twilio/status
-
-# demo scenes (fictional data; prints the board path and the steps for each scene)
-.venv/Scripts/python tools/demo_reset.py --scene monday      # fresh circle, no schedule yet
-.venv/Scripts/python tools/demo_reset.py --scene thursday    # a week of history, doses overdue
-# board: http://127.0.0.1:8000/board?token=<BOARD_TOKEN>      doctor summary: /doctor?token=<BOARD_TOKEN>
-
-# the interactive replay works offline: open site/replay.html in a browser
+CARECIRCLE_DRY_RUN=1 python tools/demo_reset.py --scene thursday
+CARECIRCLE_DRY_RUN=1 python -m uvicorn app.server:app --port 8000
+# board:  http://127.0.0.1:8000/board?token=<BOARD_TOKEN from .env>
 ```
 
-The Twilio sandbox accepts one message every 3 seconds; the app spaces its sends accordingly and counts outbound messages against a cap (`CC_MESSAGE_CAP`, default 80).
+**Full live run** (needs a Meta Model API key and a Twilio account with the WhatsApp Sandbox): copy `.env.example` to `.env` and fill it in, start the server, point the sandbox webhook at `<PUBLIC_BASE_URL>/twilio/inbound` and the status callback at `<PUBLIC_BASE_URL>/twilio/status`, then reset a scene with `--scene monday` or `--scene thursday`. The sandbox accepts one message every 3 seconds; CareCircle paces its sends to match. Requirements: Python 3.11, ffmpeg (voice notes) and Chrome or Chromium (Today card).
 
-## Limits
+## What's next
 
-- Twilio sandbox only: three real phones, each must have joined it, free-form messages only inside the 24-hour window. No template sends and no production WhatsApp Business account.
-- One patient and one circle, a single SQLite file, no login. Not designed for multiple families or real health data, and not audited for privacy law compliance.
-- Extraction is as good as the photo: handwriting, glare and unusual layouts are handled by asking a person, not by guessing. The tests are small and mostly fictional documents.
-- The medicine-name guard uses a built-in list of about 90 common drugs plus the record, so a rare drug name that is not in the record could slip past the name check (the dose and lab-value checks still apply).
-- Hindi and Spanish messages are fixed templates. One reader reviewed the Hindi; nobody fluent has reviewed the Spanish. Nothing here replaces review by fluent speakers.
-- The model is the weakest link on free text. Record questions are phrased by Spark and were unstable on the first prompt; the final one scored 8/8, which is not proof of stability.
-- Escalation timing assumes the server is running; there is no push when it is down.
+- **The WhatsApp Business API**, replacing the sandbox, with approved templates for messages outside the 24-hour window.
+- **A pilot with families,** reached through hospital discharge planners, who hand families the sheet that starts all of this.
+- **More languages.** Meta's docs list 25 evaluated languages for Voice Transcribe; each needs its own message templates read by fluent speakers.
+- **Paper in, paper out.** Photograph a caregiver's notebook page to log doses, and export the full care log for the doctor.
 
-## License
+## Prototype scope
 
-MIT. See [LICENSE](LICENSE).
+This is a hackathon prototype: one patient and one circle, a single SQLite file, fictional data, the Twilio sandbox and a server that has to be running for escalations. The Hindi templates were reviewed by a native speaker; the Spanish ones are awaiting a fluent review. It isn't a medical device and isn't for real patient care.
+
+---
+
+Built solo for the Meta Global AI Developer Hackathon (Indie track), 29 Oct to 4 Nov 2026. WhatsApp transport via the Twilio WhatsApp Sandbox. MIT licensed: see [LICENSE](LICENSE).

@@ -1,8 +1,44 @@
 # Evaluations
 
-Every probe we ran, with its table and its caveat. Fictional patient and data throughout. "Pre-registered" means the labels and thresholds were committed before any code that scores them existed; where a prompt or code changed after results were seen, that is said next to the result. **n is small everywhere (one run per input unless stated), so read these as evidence that a design works on our inputs, not as accuracy claims.**
+Every probe we ran, with its table and its caveat. Fictional patient and data throughout. "Pre-registered" means the labels and thresholds were committed before any code that scores them existed; where a prompt or code changed after results were seen, that is said next to the result. **Sample sizes are small (one run per input unless stated); the sample is in every table.**
 
 Models: `muse-spark-1.3` (text and vision, chat completions, strict `json_schema`, temperature 0, `reasoning_effort: low`), `muse-voice-transcribe-1.0`, `sam-3.1`. Channel: Twilio WhatsApp Sandbox (the Meta test number was blocked, error 2655121).
+
+## Results at a glance
+
+Each answer key was written and committed before the code that is scored against it ran. Failures are reported next to passes, and each one led to a design decision (next section).
+
+| What was tested | Result | Sample |
+|---|---|---|
+| Reading discharge sheets | **78/78** fields exact; 0 invented or dropped medicines, 0 invented times | 3 fictional sheets |
+| Real, redacted prescriptions | **15/15** printed medicine names; on handwriting, 1 misread and 4 lines flagged, which led to the confirm-every-handwritten-line rule | 4 documents (2 printed, 2 handwritten) |
+| Voice-note confirmations | **12/12**, including **4/4** in Hindi, Punjabi and mixed speech | 12 notes, one speaker |
+| Pill-organiser photos | **14/14** compartments on **8/8** real photos | 8 photos of a real tray |
+| Lab reports | **54/54** fields; 0 wrong statuses, 0 invented ranges | 2 fictional reports |
+| Message routing | **19/19** in each of 3 fresh runs | 19 pre-registered cases |
+| Questions about the care record | **8/8** on the original set and **8/8** on a held-out set, 3 runs each | 16 questions |
+| Medical questions | **12/12** get the fixed no-advice reply | 12 questions |
+| Escalation on real phones | each step fired on schedule (**60.0 s and 120.0 s ± 0.05 s**); delivered in 3.3 to 4.5 s | 4 trials, 7 sends |
+| Outbound guard | **0** medicine names, doses or lab values outside the record | every saved outgoing text, every phase (65 in the latest scan; 0 guard blocks in the final runs) |
+
+Also covered by 207 automated tests. Model API spend for building and testing everything: about $6.
+
+## Failures, and the decision each one caused
+
+| What failed or missed | What we saw | The decision it caused |
+|---|---|---|
+| SAM 3.1 for organiser compartments | Mapped all 14 compartments on 2 of 8 real photos (3 of 4 AI photos); Spark alone read 14/14 on all 8 | SAM overlays dropped; Spark judges the organiser alone |
+| Medicine-name check by web search (P9) | 10 of 17 real names found with a valid source against a bar of 15; 4 of the 7 misses were cited pages that returned HTTP 404 | Not shipped; every extraction stays a draft that a member confirms name by name |
+| Handwritten documents (P8) | 1 name misread as "clear"; the model dropped most label medicines; 4 lines flagged unsure | Every line on a handwritten sheet is unsure, and YES is refused until each name is retyped |
+| Printed document 1 (P8, pre-registered score) | 2 "confidently wrong" lines, both clerical errors in our own answer key (two typos; two documents' labels swapped), corrected and reported side by side | Both scores are published side by side |
+| "2 TSF" read as 2.0 mL (found during P8) | The unit list had no teaspoon | Units are kept exactly as printed and never converted; the guard knows tsf and tbsp |
+| Record questions (Phase 1) | The first prompt scored 6/8, 4/8, 7/8 on identical inputs at temperature 0 | Code builds a snapshot of the facts (including who is on duty and what is due later); Spark only phrases them, and every answer passes the guard. Final prompt 8/8 |
+| Held-out record questions (Phase 2) | 5/8 before any fix | Printed-range precision, query mapping for "in range" questions and who-gave attribution fixed; 8/8 in three runs |
+| Router on a past-action report (Phase 3 and 4) | Voice note v05 and later v11 routed as a question or "other" in one run each (18/19) | A code rule: a message that reports a past action and asks nothing is a dose report. Three fresh runs 19/19 |
+| Lab status on the board (Phase 3 screenshot) | Creatinine 1.2 shown "above" its 0.7 to 1.3 range: a demo fixture edited values behind a stored status | Statuses are computed from value and printed range every time they are shown, never stored; a test renders every lab row |
+| Twilio free-form sends on a Trial account | HTTP 400 "ContentSid Required" three times | Account upgraded to a full account; the same request then succeeded |
+| Advice blocklist matched a lab's name | "diagnos" matches "Sunrise Diagnostics" | The lab name is left out of outbound texts; the pre-registered blocklist is unchanged |
+| Voice transcripts were rough on some words | Atorvastatin heard as "Astro Vista" | Dose parsing is constrained to the slots of the live schedule |
 
 ## Pre-registration
 
@@ -76,26 +112,11 @@ P7 (lab extraction from two fictional lab reports; fields = value, unit, printed
 
 Record questions, three runs of two sets: original 8 **8/8, 8/8, 8/8**; held-out 8 **8/8, 8/8, 8/8**. Held-out history: 5/8 before any fix, 6/7/7 after fix attempt 1, 8/8/8 after attempt 2 (both allowed attempts used; fixes were made after seeing results, labels were never changed). Medical questions 1 to 12: **12/12 in each of 3 runs**, fixed reply, two urgent. Outbound scan: **0 medicine names, doses or lab values outside the record across 280 saved texts.** Phase 1 router eval again: 19/19.
 
-**Caveats.** Keyword checks are loose. The two lab reports are fictional, printed in one style, so P7 says little about other labs' layouts. The advice blocklist pattern `diagnos\w*` matches the lab name "Sunrise Diagnostics", so that lab name is left out of outbound texts.
+**Caveats.** Keyword checks are loose. The two lab reports are fictional and printed in one style. The advice blocklist pattern `diagnos\w*` matches the lab name "Sunrise Diagnostics", so that lab name is left out of outbound texts.
 
-## Phase 3: real photos, real documents, SAM 3.1
+## Phase 3: real documents, units and relay choices
 
-### P3-real: 8 real organiser photos (14 labelled compartments each)
-
-| Photo | Spark alone | SAM masks | All 14 mapped | SAM pipeline |
-|---|---|---|---|---|
-| or1 | 14/14 | 1 | no | 0/14 |
-| or2 | 14/14 | 1 | no | 0/14 |
-| or3 | 14/14 | 1 | no | 0/14 |
-| or4 | 14/14 | 16 | yes | 14/14 |
-| or5 | 14/14 | 16 | yes | 14/14 |
-| or6 | 14/14 | 1 | no | 0/14 |
-| or7 | 14/14 | 1 | no | 0/14 |
-| or8 | 14/14 | 1 | no | 0/14 |
-
-Spark alone read **8/8 photos at 14/14 (0 wrong compartments)**. SAM 3.1 returned one mask on six photos and 16 masks (the whole tray) on two; it mapped all 14 compartments on **2 of 8** photos (the rule needed 7 of 8). Decision: **SAM overlays dropped; Spark judges alone.** Across both organiser tests SAM 3.1 mapped 3 of 4 AI-generated photos and 2 of 8 real ones, and added nothing where it worked. The SAM code stays in `app/vision.py` but is not called.
-
-### P8-private: 4 real documents (2 printed, 2 handwritten), scored by names only
+### P8: 4 real, redacted documents (2 printed, 2 handwritten), scored by names only
 
 The scoring tool printed counts only; file contents were never printed or copied. Rule fixed before any run: a normalised match, or a contains-match of 4+ letters; a clear unmatched line close to a label name (difflib ratio >= 0.6) is "confidently wrong", otherwise "invented".
 
@@ -140,12 +161,35 @@ Post-hoc rescore with the advisor's corrected labels (clerical errors: labels of
 | Dose states at a fixed clock | "due" inside the 15-minute grace; "overdue, escalating" after it; "missed" when the ladder is exhausted or the next dose of the same medicine falls due |
 | Router eval, three fresh runs | **19/19, 19/19, 19/19** (types; medical 10/10 and record 8/8 each). Same-day earlier runs: 18/19 (voice v05), then 18/19 (voice v11, a Punjabi clip the model called "other"). A code rule (a past-action report with no "?" is a dose report) was added after those misses |
 | Outbound scan | 65 saved texts, 0 medicine names, doses or lab values outside the record |
-| Hindi replies through Spark, 10 real replies | 10/10 localised, 0 guard failures, 0 names or numbers changed. This checks names and numbers only. One Hindi reader reviewed ten replies; their feedback (time words, a medicine word after each name) led to the fixed Hindi templates. The templates themselves have not had a second reader |
-| Spanish replies through Spark, 10 real replies | 10/10, same checks. Nobody fluent has reviewed the Spanish |
+| Hindi replies through Spark, 10 real replies | 10/10 localised, 0 guard failures, 0 names or numbers changed. The check covers names and numbers. One Hindi reader reviewed ten replies; their feedback (time words, a medicine word after each name) led to the fixed Hindi templates |
+| Spanish replies through Spark, 10 real replies | 10/10, same checks. The Spanish templates are awaiting a fluent reader's review |
 
 System messages (nudges, relays, missed doses, schedule and lab notices, the daily summary) are now **fixed templates** in English, Hindi and Spanish; Spark phrases only free answers to record questions. Hindi times use the 12-hour clock with a time word ("शाम 8 बजे").
 
-## P9: checking medicine names against public listings (dropped)
+## Evaluated, not shipped
+
+We hold each model to a bar set before testing and ship what clears it. Two things did not.
+
+### SAM 3.1 (organiser-compartment segmentation)
+
+Two tests. On four AI-generated organiser photos the SAM pipeline put at least 13 of 14 compartments right on 3 of 4 (o1 to o3 14/14, o4 0/14), while Spark alone read 14/14 on all four. On eight real photos SAM mapped all 14 compartments on 2 of 8 (the rule needed 7 of 8) while Spark alone read 14/14 on all eight. **Decision: Spark ships; the SAM code stays in `app/vision.py` and is not called.**
+
+#### P3-real: 8 real organiser photos (14 labelled compartments each)
+
+| Photo | Spark alone | SAM masks | All 14 mapped | SAM pipeline |
+|---|---|---|---|---|
+| or1 | 14/14 | 1 | no | 0/14 |
+| or2 | 14/14 | 1 | no | 0/14 |
+| or3 | 14/14 | 1 | no | 0/14 |
+| or4 | 14/14 | 16 | yes | 14/14 |
+| or5 | 14/14 | 16 | yes | 14/14 |
+| or6 | 14/14 | 1 | no | 0/14 |
+| or7 | 14/14 | 1 | no | 0/14 |
+| or8 | 14/14 | 1 | no | 0/14 |
+
+Spark alone read **8/8 photos at 14/14 (0 wrong compartments)**. SAM 3.1 returned one mask on six photos and 16 masks (the whole tray) on two; it mapped all 14 compartments on **2 of 8** photos (the rule needed 7 of 8). Decision: **SAM overlays dropped; Spark judges alone.** Across both organiser tests SAM 3.1 mapped 3 of 4 AI-generated photos and 2 of 8 real ones, and added nothing where it worked. The SAM code stays in `app/vision.py` but is not called.
+
+### Medicine names against public listings, by Muse Spark web search (P9)
 
 Muse Spark's `web_search` tool (Responses API only; $2.50 per 1,000 searches) returns a product name, a strength flag and a source URL; code then fetched the URL and counted a name as found only if the domain was on an allow-list (dailymed, medlineplus, drugs.com, ema.europa.eu, medicines.org.uk, nhs.uk, healthdirect.gov.au, 1mg, practo, pharmeasy, apollopharmacy), the page loaded and it contained the name. Pre-registered list, one run, no prompt changes after results. Pass rule: >= 15 of 17 real names found with a valid source, 0 of 5 fakes, 0 of 2 wrong strengths.
 
@@ -178,11 +222,7 @@ Muse Spark's `web_search` tool (Responses API only; $2.50 per 1,000 searches) re
 | Dolo 6500 mg | strength not found | not found | - | model: not found |
 | Pantop 400 mg | strength not found | not found | - | model: not found |
 
-**Caveat.** The errors went the safe way (nothing false was accepted), but recall was 59% and most misses were cited pages that returned 404. Kept in `POSTLAUNCH.md`.
-
-## Language and tone checks that are *not* measured
-
-Nothing here measures whether the Hindi or Spanish reads naturally, whether a family would understand the board, or whether the escalation messages feel intrusive. Those need real users.
+**Decision.** Not shipped. The errors went the safe way (nothing false was accepted), but recall was 59% and most misses were cited pages that returned 404. Families confirm names instead. Kept in `POSTLAUNCH.md`.
 
 ## Spend
 

@@ -76,3 +76,12 @@ flowchart LR
 | Wording | `app/tmpl.py` (fixed templates en, hi, es), `app/lang.py` (free-text answers only), `app/qa.py` |
 | Views | `app/board.py`, `app/board.html`, `app/labviz.py`, `app/activity.py`, `app/cards.py`, `app/links.py` |
 | Demo | `app/seed.py`, `app/demo.py`, `tools/demo_reset.py`, `tools/build_replay.py`, `site/replay.html` |
+
+## Known limits
+
+- **Medicine-name guard.** The guard recognises a medicine name from a curated list of about 90 common drugs plus every name in the record (confirmed and draft schedule lines, the sender's own message, and a task made from a member's own message). A listed name that is not in the record is blocked; the name of a rare drug that is neither listed nor in the record is not recognised as a drug, so a bare name could pass. **The dose check and the lab-value check always apply**, whatever the name: any dose (for example "5 mg") or lab value with its unit that is not in the record or the sender's message is blocked, so a rare drug name cannot travel with a number. Units are matched as printed (including tsf and tbsp), and our own board and card links are removed before the check because their random tokens are not content.
+- **Free text is the model's weakest link.** Record questions are phrased by Spark from facts that code builds; the first prompt was unstable and the final one scored 8/8, which is not proof of stability. Every answer still passes the guard.
+- **The Twilio sandbox.** Three real phones, free-form messages only inside the 24-hour window, one message every 3 seconds (the app spaces its sends). There are no template sends outside the window; those messages are skipped and logged. The Meta Cloud API channel is a stub behind the same adapter.
+- **One patient, one circle, one SQLite file, no login,** and the server has to be running for escalations; there is no push when it is down.
+- **Extraction is as good as the photo.** Handwriting, glare and unusual layouts are handled by asking a person, not by guessing.
+- **Languages.** System messages are fixed templates in English, Hindi and Spanish. Messages without a template (for example the lab-draft summary) go out in English. The Spanish templates are awaiting a fluent reader's review.

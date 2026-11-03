@@ -26,3 +26,8 @@ videos/
 *.mkv
 PHASE0_STATUS_FOR_ADVISOR.md
 data/
+
+# README images
+!docs/img/
+!docs/img/*.png
+!docs/img/*.gif
