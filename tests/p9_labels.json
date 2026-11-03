@@ -1,0 +1,8 @@
+{
+ "note": "P9 pre-registered labels (advisor list, committed before any search). Names only are ever sent to the search.",
+ "expected_found": ["metformin 500 mg", "amlodipine 5 mg", "atorvastatin 20 mg", "levothyroxine 50 mcg", "insulin glargine 100 units/mL", "Lipitor 20 mg", "Glucophage 500 mg", "Tylenol 500 mg", "Nurofen 200 mg", "Pantop 40 mg", "Dolo 650 mg", "Azee 250 mg", "Econorm 250 mg", "Swich 200 mg", "Pan-D", "Sporolac DS", "Emeset 4 mg"],
+ "expected_not_found": ["Surich 200 mg", "Zeprovan 250 mg", "Lomaxitrine 40 mg", "Cardivexol 10 mg", "Astro Vista 20 mg"],
+ "expected_strength_not_found": ["Dolo 6500 mg", "Pantop 400 mg"],
+ "pass": {"found_with_valid_source_min": 15, "fakes_found_max": 0, "wrong_strengths_found_max": 0},
+ "allowed_domains": ["dailymed.nlm.nih.gov", "medlineplus.gov", "drugs.com", "ema.europa.eu", "medicines.org.uk", "nhs.uk", "healthdirect.gov.au", "1mg.com", "practo.com", "pharmeasy.in", "apollopharmacy.in"]
+}
