@@ -7,6 +7,7 @@ Uses CARECIRCLE_DB or data/carecircle.db; also moves the clock of a running serv
 printed CC_START_TIME. For a scene it prints the filming steps (tools/scene_steps.py): which phone does what, and what should arrive where.
 Never prints a token, key or phone number."""
 import os, pathlib, sys
+from datetime import timedelta
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tools"))
 from dotenv import load_dotenv
@@ -47,7 +48,8 @@ def main(argv=None):
             print("WARNING: CARECIRCLE_DRY_RUN=1 is set in this shell; unset it before you start the server, or nothing will reach the phones.")
         from scene_steps import steps
         print()
-        print(steps(scene))
+        film = record.iso(t + timedelta(minutes=33, seconds=30)) if scene == "thursday" else None      # 08:28:30 patient-local: the ladder then reaches Kabir at 03:01 London
+        print(steps(scene, film))
     print("Board: /board?token=<BOARD_TOKEN>")
 
 

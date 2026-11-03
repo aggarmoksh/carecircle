@@ -180,7 +180,7 @@ def test_both_scenes_reset_cleanly_and_repeatably():
 
 
 @pytest.mark.parametrize("scene,needles", [("monday", ["SCENE monday", "r2 (Meena's phone)", "r3 (Kabir's phone)", "Arrives on r1", "मैंने यह पढ़ा:", "Beat 2:15-2:38"]),
-                                          ("thursday", ["SCENE thursday", "Arrives on r2", "Arrives on r1 (Arjun, 19:01 in Los Angeles)", "Wednesday PM", "बुधवार शाम"])])
+                                          ("thursday", ["SCENE thursday", "Arrives on r2", "Arrives on r1 (Arjun, awake in Los Angeles", "Wednesday PM", "बुधवार शाम"])])
 def test_scene_command_prints_the_filming_steps_and_sends_nothing(tmp_path, scene, needles):
     env = dict(os.environ, CARECIRCLE_DB=str(tmp_path / "s.db"), ADMIN_TOKEN="", CARECIRCLE_DRY_RUN="")
     r = subprocess.run([sys.executable, str(ROOT / "tools" / "demo_reset.py"), "--scene", scene], capture_output=True, text=True, encoding="utf-8", env=env, timeout=60, cwd=ROOT)

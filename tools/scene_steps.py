@@ -39,12 +39,13 @@ Beat 2:15-2:38 (the lab report), any time after the schedule is live
 THURSDAY = """\
 SCENE thursday: Monday to Wednesday doses confirmed, Wednesday 20:00 recorded as missed, lab report L2 confirmed by Kabir, patient clock Thursday 07:55 (Kolkata), live mode.
 Beat 1:15-1:55 (the ladder), the board's Now card
-  1. Let the board clock run to 08:15, or open "Demo controls", type the admin token and press "Jump to next due + grace".
+  1. Open the board's "Demo controls", type the admin token and "Set time" to {FILM_CLOCK} (Thursday 08:28:30 in Kolkata). At that moment it is 18:58 in Los Angeles, 02:58 in London and 03:58 in Madrid, so the numbers on screen match the script: about three minutes later Arjun's local time reads 19:01 and Kabir's 03:01. (Pressing "Jump to next due + grace" instead also works, but then London reads about 02:48.)
      Board: "Morning metformin, overdue", the three 08:00 doses as cards under it.
-  2. Arrives on r2 (Meena), one private message, in Hindi: "नमस्ते Meena, क्या Nanaji ने सुबह 8 बजे वाली amlodipine, aspirin और metformin दवा ले ली? 'done' लिखें, या बताएं कौन सी ली।"  Do not answer.
-  3. About a minute later (one step is 60 s): Sunita (simulated, nearby) is asked next; look for it in Activity. About a minute after that the arc moves out to Arjun.
-     Arrives on r1 (Arjun, 19:01 in Los Angeles): "CareCircle: Meena hasn't confirmed the 8 AM medicines for Nanaji yet (amlodipine, aspirin, metformin). Can you check and tell me?"
-  4. On The Circle and in Activity, Kabir ("asleep, 03:0x London") and Sofía ("asleep, 04:0x Madrid") are shown as skipped while they sleep: nobody wakes them. Order on the board: Meena, then Sunita, then Arjun; the two skips appear within a minute or two of Arjun being asked.
+  2. Within a few seconds the scheduler catches up and runs the whole ladder, one step per second: Meena first, then Sunita, then Arjun, then Kabir and Sofía. Real sends are spaced 3 seconds apart, so Meena's message arrives first and Arjun's about 3 seconds later.
+     Arrives on r2 (Meena), one private message, in Hindi: "नमस्ते Meena, क्या Nanaji ने सुबह 8 बजे वाली amlodipine, aspirin और metformin दवा ले ली? 'done' लिखें, या बताएं कौन सी ली।"  Do not answer.
+     Sunita (simulated, nearby) is asked next; look for it in Activity. She has no phone.
+     Arrives on r1 (Arjun, awake in Los Angeles, about 19:00 there): "CareCircle: Meena hasn't confirmed the 8 AM medicines for Nanaji yet (amlodipine, aspirin, metformin). Can you check and tell me?"
+  3. The board timeline shows 08:28 for every step, because the clock was set to 08:28:30 and the scheduler caught up at once. Wait until the board clock reads 08:31 (about two and a half minutes), then film The Circle: Kabir reads "03:01 London" with "asleep, 02:58" under his name (the time he was skipped), Sofía "04:01 Madrid", "asleep, 03:58", Arjun "19:01 Los Angeles" with the orange arc to him. Kabir and Sofía are shown skipped while they sleep: nobody wakes them.
 Beat 1:55-2:15 (the organiser photo)
   5. r2: send the photo of the ice-tray pill organiser (media/organiser_real/or1.jpeg).
      Arrives on r2, in Hindi: "दवा के डिब्बे में बुधवार शाम वाला हिस्सा अभी भरा है: वह दवा नहीं दी गई।"
@@ -52,5 +53,7 @@ Beat 1:55-2:15 (the organiser photo)
 Answer "done" from r2 at any time to close the three doses (the circle settles)."""
 
 
-def steps(scene):
-    return COMMON + "\n\n" + {"monday": MONDAY, "thursday": THURSDAY}[scene]
+def steps(scene, film_clock_utc=None):
+    """film_clock_utc: the UTC time that is 08:28:30 Kolkata on the scene's Thursday, as the demo clock field wants it."""
+    text = {"monday": MONDAY, "thursday": THURSDAY}[scene]
+    return COMMON + "\n\n" + text.replace("{FILM_CLOCK}", film_clock_utc or "<UTC time of 08:28:30 Kolkata on that Thursday>")

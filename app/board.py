@@ -33,8 +33,14 @@ def _ladder(conn, now, ms):
             continue
         steps = [dict(at=e["at"], who=_name(ms, e["actor"]), actor=e["actor"], kind=e["type"], note=e["note"]) for e in record.events(conn, slot, d) if e["type"] in ("nudged", "escalated")]
         skips = []
-        for r in conn.execute("SELECT actor, detail, at FROM audit_log WHERE kind='escalation_skip' AND detail LIKE ?", (f"{slot} {d}:%",)):
-            skips.append(dict(who=_name(ms, r["actor"]), actor=r["actor"], why=r["detail"].split(": ", 1)[1], at=r["at"]))
+        # doses due at the same time are one question to the family: the scheduler logs a skip once for the group (against its first dose), so look across every dose at this time
+        t = slot.rsplit("_", 1)[1]
+        seen = set()
+        for r in conn.execute("SELECT actor, detail, at FROM audit_log WHERE kind='escalation_skip' AND detail LIKE ? ORDER BY id", (f"%_{t} {d}: %",)):
+            why = r["detail"].split(": ", 1)[1]
+            if (r["actor"], why.split(" (")[0]) not in seen:
+                seen.add((r["actor"], why.split(" (")[0]))
+                skips.append(dict(who=_name(ms, r["actor"]), actor=r["actor"], why=why, at=r["at"]))
         out.append(dict(slot=slot, date=str(d), due=record.iso(record.due_at(conn, slot, d)), status=record.status_of(conn, slot, d, now), steps=steps, skipped=skips))
     return out
 

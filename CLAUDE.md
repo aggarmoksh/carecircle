@@ -80,3 +80,8 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 - All listed system messages and the help, draft and skipped/unsure messages are fixed templates in tmpl.py; YES also means sí, si, haan, हाँ, हां.
 - Scenes: tools/demo_reset.py --scene monday|thursday prints the filming steps (tools/scene_steps.py). monday sets every member's choice to "everything". Server for filming must run without CARECIRCLE_DRY_RUN.
 - Live card send: tools/send_card_live.py --yes (only when the user says "ready").
+
+## Freeze fixes (rehearsal bugs, each with a test in tests/test_freeze_fixes.py)
+- The board shows a skipped member (for example "asleep, 03:01") for the dose that leads the Now card whatever the medicine order: skips are logged once per group of doses due together, so the board looks them up across every dose at that time.
+- Thursday filming steps now set the demo clock to 08:28:30 Kolkata (the exact UTC time is printed), so the on-screen numbers match docs/VIDEO_SCRIPT.md (Arjun 19:01, Kabir 03:01, Sofía 04:01).
+- Monday shot A8 (L2 lab photo from r3, then YES) was checked with the real model on a scratch database: draft, YES, relays in English, Hindi and Spanish, each with the member's own link.
