@@ -37,13 +37,13 @@ def _bump():
 
 
 class Channel:
-    def send_text(self, member: dict, text: str) -> dict:
+    def send_text(self, member: dict, text: str, media_url: str = None) -> dict:
         raise NotImplementedError
 
 
 class SimChannel(Channel):
-    def send_text(self, member, text):
-        _append(SIM_INBOX, {"t": clock.iso(), "dir": "to", "member": member["id"], "simulated": True, "text": text})
+    def send_text(self, member, text, media_url=None):
+        _append(SIM_INBOX, {"t": clock.iso(), "dir": "to", "member": member["id"], "simulated": True, "text": text, **({"media": True} if media_url else {})})
         return {"sid": f"sim:{member['id']}", "simulated": True}
 
     def sim_reply(self, member_id, text):
@@ -51,8 +51,8 @@ class SimChannel(Channel):
 
 
 class DryRun(Channel):
-    def send_text(self, member, text):
-        _append(DRYRUN_OUTBOX, {"t": clock.iso(), "member": member["id"], "text": text})
+    def send_text(self, member, text, media_url=None):
+        _append(DRYRUN_OUTBOX, {"t": clock.iso(), "member": member["id"], "text": text, **({"media": True} if media_url else {})})
         return {"sid": f"dry:{member['id']}"}
 
 
@@ -66,13 +66,13 @@ class TwilioSandbox(Channel):
         self.numbers = [x.strip() for x in os.environ["WA_RECIPIENTS"].split(",") if x.strip()]
         self.status_cb = os.environ["PUBLIC_BASE_URL"].rstrip("/") + "/twilio/status"
 
-    def send_text(self, member, text):
+    def send_text(self, member, text, media_url=None):
         from twilio.base.exceptions import TwilioRestException
         _bump()  # count before sending: stop before exceeding the cap
         t0 = time.time()
         try:
             m = self.client.messages.create(from_=self.sender, to="whatsapp:" + self.numbers[member["recipient_idx"] - 1],
-                                            body=text, status_callback=self.status_cb)
+                                            body=text, status_callback=self.status_cb, **({"media_url": [media_url]} if media_url else {}))
         except TwilioRestException as e:
             if e.code == 63015:
                 TwilioSandbox.consecutive_63015 += 1
@@ -84,7 +84,7 @@ class TwilioSandbox(Channel):
 
 
 class MetaCloud(Channel):
-    def send_text(self, member, text):
+    def send_text(self, member, text, media_url=None):
         # Not implemented: the Meta test number is blocked (error 2655121), see FRICTION_LOG.md.
         raise NotImplementedError("meta_cloud channel is a stub; see FRICTION_LOG.md (error 2655121)")
 
@@ -97,9 +97,9 @@ class Router(Channel):
         self.real = DryRun() if self.dry else None
         self.sim = SimChannel()
 
-    def send_text(self, member, text):
+    def send_text(self, member, text, media_url=None):
         if member["kind"] == "sim":
-            return self.sim.send_text(member, text)
+            return self.sim.send_text(member, text, media_url)
         if self.real is None:
             self.real = TwilioSandbox()
-        return self.real.send_text(member, text)
+        return self.real.send_text(member, text, media_url)

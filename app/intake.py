@@ -9,6 +9,7 @@ from .outbox import FIXED_MEDICAL, FIXED_URGENT, FIXED_LAB
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 INTENTS = ["dose_update", "record_question", "correction", "volunteer", "medical_question", "urgent_symptom", "relay_choice", "other"]
+BOARD_RX = re.compile(r"(board|बोर्ड|tablero)[.!]?", re.I)
 STOP_RX = re.compile(r"\s*stop\s*[.!]*\s*", re.I)
 YES = {"yes", "y", "yes please", "yeah", "yep", "yes start", "yes thanks"}
 TYPE_WORDS = [("discharge_sheet", r"discharge"), ("prescription", r"prescri"), ("pill_organiser", r"organi[sz]er|pill ?box|pill ?organi"), ("lab_report", r"\blab\b|report|blood test|results?")]
@@ -228,6 +229,9 @@ def _text(conn, ob, mid, text, via="text"):
         _send(ob, mid, f"Schedule started: {n} medicine(s) are now live." + (f" {left} line(s) still need a time." if left else "") + " I'll check in on each dose.", "YES received")
         ob.relay_t("schedule_live", dict(giver=nm(conn, mid), patient=config.PATIENT_NAME, n=n), [mid], "state change: schedule confirmed")
         return "yes"
+    if BOARD_RX.fullmatch(text.strip()):
+        ob.send_card(mid, "today_caption", "member asked for the board", patient=config.PATIENT_NAME)
+        return "board"
     if STOP_RX.fullmatch(text):
         _set_pref(conn, ob, mid, "stop", text)
         return "relay_choice"

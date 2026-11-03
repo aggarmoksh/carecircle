@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS lab_reports(id INTEGER PRIMARY KEY AUTOINCREMENT, doc
   status TEXT CHECK(status IN('draft','live')), confirmed_by TEXT, confirmed_at TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS lab_values(id INTEGER PRIMARY KEY AUTOINCREMENT, report_id INTEGER, test TEXT, value REAL, unit TEXT,
   range_text TEXT, range_low REAL, range_high REAL, printed_flag TEXT, status TEXT);
+CREATE TABLE IF NOT EXISTS board_tokens(token_hash TEXT PRIMARY KEY, member_id TEXT, gen INTEGER, created_at TEXT, revoked_at TEXT);
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS cards(id TEXT PRIMARY KEY, state_hash TEXT, created_at TEXT);
 CREATE TABLE IF NOT EXISTS queue(id INTEGER PRIMARY KEY AUTOINCREMENT, member_id TEXT, text TEXT, reason TEXT, created_at TEXT, sent_at TEXT);
 """
 

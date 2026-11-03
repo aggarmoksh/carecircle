@@ -12,10 +12,12 @@ LABELS = json.loads((ROOT / "labels.json").read_text(encoding="utf-8"))
 
 class FakeChannel(Channel):
     def __init__(self):
-        self.log = []
+        self.log, self.media = [], []
 
-    def send_text(self, member, text):
+    def send_text(self, member, text, media_url=None):
         self.log.append((member["id"], text))
+        if media_url:
+            self.media.append((member["id"], media_url))
         return {"sid": "fake:" + member["id"]}
 
 

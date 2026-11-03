@@ -76,6 +76,10 @@ def _en(kind, s):
         return "CareCircle daily summary:"
     if kind == "logged":
         return f"Logged: {_list(meds, 'en')} {s['time']} given ({s['giver']}). Thanks."
+    if kind == "today_caption":
+        return f"Today for {P}." + _link(None, s.get("link"))
+    if kind == "board_line":
+        return f"Board (optional): {s['link']}"
     raise KeyError(kind)
 
 
@@ -100,6 +104,10 @@ def _hi(kind, s):
         return "CareCircle का दैनिक सारांश:"
     if kind == "logged":
         return f"दर्ज हो गया: {t} वाली {meds} दवा दी गई ({s['giver']})। धन्यवाद।"
+    if kind == "today_caption":
+        return f"आज की स्थिति, {P}।" + (f" बोर्ड (वैकल्पिक): {s['link']}" if s.get("link") else "")
+    if kind == "board_line":
+        return f"बोर्ड (वैकल्पिक): {s['link']}"
     raise KeyError(kind)
 
 
@@ -124,6 +132,10 @@ def _es(kind, s):
         return "Resumen diario de CareCircle:"
     if kind == "logged":
         return f"Registrado: {meds} de {t} ({s['giver']}). Gracias."
+    if kind == "today_caption":
+        return f"Hoy, {P}." + (f" Tablero (opcional): {s['link']}" if s.get("link") else "")
+    if kind == "board_line":
+        return f"Tablero (opcional): {s['link']}"
     raise KeyError(kind)
 
 
@@ -145,4 +157,4 @@ def fixed(kind, lang):
     return FIXED[kind].get(lang, FIXED[kind]["en"])
 
 
-KINDS = ["nudge", "escalate", "relay_given", "missed", "organiser_missed", "schedule_live", "lab_added", "daily_header", "logged"]
+KINDS = ["nudge", "escalate", "relay_given", "missed", "organiser_missed", "schedule_live", "lab_added", "daily_header", "logged", "today_caption", "board_line"]

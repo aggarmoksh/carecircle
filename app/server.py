@@ -10,9 +10,9 @@ from dotenv import load_dotenv
 import hmac
 from datetime import date, timedelta
 from fastapi import FastAPI, Request, Response, BackgroundTasks
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, StreamingResponse
 from twilio.request_validator import RequestValidator
-from . import db, intake, escalation, record, channel, config, board, labviz
+from . import db, intake, escalation, record, channel, config, board, labviz, links, cards
 from .clock import clock
 from .outbox import Outbox
 
@@ -130,14 +130,97 @@ def _tok_ok(given, env):
 
 
 def _board_ok(request: Request):
-    return _tok_ok(request.query_params.get("token", ""), "BOARD_TOKEN")
+    """The shared BOARD_TOKEN, or a member's personal read-only token that has not been revoked."""
+    tok = request.query_params.get("token", "")
+    if _tok_ok(tok, "BOARD_TOKEN"):
+        return True
+    conn = db.connect()
+    try:
+        return links.verify(conn, tok) is not None
+    finally:
+        conn.close()
+
+
+def _og(conn):
+    base = (os.environ.get("PUBLIC_BASE_URL") or links.BASE_DEFAULT).rstrip("/")
+    img = f"{base}/card/{cards.current(conn)}.png"
+    title = f"CareCircle: {config.PATIENT_NAME}'s circle"
+    desc = f"Today's medicines for {config.PATIENT_NAME} and who is helping. Read-only; the board is optional."
+    return (f"<title>{title}</title><meta name=\"description\" content=\"{desc}\"><meta property=\"og:type\" content=\"website\"><meta property=\"og:title\" content=\"{title}\">"
+            f"<meta property=\"og:description\" content=\"{desc}\"><meta property=\"og:image\" content=\"{img}\"><meta property=\"og:image:width\" content=\"1080\"><meta property=\"og:image:height\" content=\"1350\">"
+            f"<meta name=\"twitter:card\" content=\"summary_large_image\"><meta name=\"robots\" content=\"noindex\">")
 
 
 @app.get("/board")
 def board_page(request: Request):
     if not _board_ok(request):
         return Response("forbidden", status_code=403)
-    return HTMLResponse((ROOT / "app" / "board.html").read_text(encoding="utf-8").replace("/*LABCSS*/", labviz.CSS))
+    conn = db.connect()
+    try:
+        og = _og(conn)
+    finally:
+        conn.close()
+    page = (ROOT / "app" / "board.html").read_text(encoding="utf-8").replace("/*LABCSS*/", labviz.CSS).replace("<title>CareCircle board</title>", og, 1)
+    return HTMLResponse(page, headers={"Referrer-Policy": "no-referrer"})
+
+
+@app.get("/api/stream")
+async def api_stream(request: Request):
+    """Server-Sent Events: the board state is pushed when it changes (the page falls back to polling if the stream drops)."""
+    if not _board_ok(request):
+        return Response("forbidden", status_code=403)
+    import asyncio
+
+    async def gen():
+        last, idle = None, 0
+        yield "retry: 3000" + chr(10) * 2
+        while not await request.is_disconnected():
+            conn = db.connect()
+            try:
+                payload = json.dumps(board.state(conn))
+            finally:
+                conn.close()
+            if payload != last:
+                last, idle = payload, 0
+                yield "event: state" + chr(10) + "data: " + payload + chr(10) * 2
+            else:
+                idle += 1
+                if idle >= 15:
+                    idle = 0
+                    yield ": keep-alive" + chr(10) * 2
+            await asyncio.sleep(1)
+    return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/card/{cid}.png")
+def card_png(cid: str):
+    """The Today card. The address is the secret: unguessable, and gone 24 hours after it was made."""
+    conn = db.connect()
+    try:
+        cards.purge(conn)
+        p = cards.png_path(conn, cid)
+    except Exception:
+        return Response("card unavailable", status_code=503)
+    finally:
+        conn.close()
+    if p is None:
+        return Response("not found", status_code=404)
+    return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=300", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/admin/revoke")
+async def admin_revoke(request: Request):
+    """Revoke a member's personal board link (admin only); the next message to them carries a fresh link."""
+    if not _tok_ok(request.headers.get("X-Admin-Token", ""), "ADMIN_TOKEN"):
+        return Response("forbidden", status_code=403)
+    body = await request.json()
+    conn = db.connect()
+    try:
+        n = links.revoke(conn, body["member"])
+        db.audit(conn, "link_revoked", "admin", body["member"], "admin revoked a board link")
+        return {"revoked": n}
+    finally:
+        conn.close()
 
 
 @app.get("/api/state")

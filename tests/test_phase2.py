@@ -111,7 +111,8 @@ def test_lab_photo_is_draft_until_yes_then_relay(monkeypatch):
     assert res["intent"] == "yes_lab" and len(labs.live_reports(conn)) == 1
     relays = {m: t for m, t in ob.sent[n0:] if m != "m3"}
     want = "Kabir added a lab report from 29 Oct: 4 values are outside the lab's printed range. See the board."
-    assert relays["m1"] == want and relays["m2"] == want and relays["m4"] == want
+    assert all(relays[k].startswith(want + " Board (optional): ") for k in ("m1", "m2", "m4"))     # each with their own read-only link
+    assert len({relays[k].split("token=")[1] for k in ("m1", "m2", "m4")}) == 3
     assert any(r["kind"] == "lab_confirmed" for r in conn.execute("SELECT kind FROM audit_log"))
 
 
@@ -172,7 +173,7 @@ def test_board_requires_board_token(client):
     assert client.get("/api/state").status_code == 403
     assert client.get("/doctor").status_code == 403
     r = client.get("/board?token=board-test-token")
-    assert r.status_code == 200 and "CareCircle board" in r.text
+    assert r.status_code == 200 and "og:image" in r.text and "CareCircle" in r.text
     s = client.get("/api/state?token=board-test-token").json()
     assert {"members", "doses", "ladder", "organiser", "labs", "tasks", "audit", "schedule"} <= set(s)
     assert client.get("/doctor?token=board-test-token").status_code == 200

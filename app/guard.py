@@ -62,6 +62,7 @@ def _strip_lab(conn, text):
 
 def check(conn, text, sender_text=""):
     """Return (ok, reason)."""
+    text = re.sub(r"https?://\S+", " ", text)      # our own board and card links carry random tokens; they are not content
     text, bad_lab = _strip_lab(conn, text)
     bad_lab = [b for b in bad_lab if not _doses(b)]  # plain dose units are reported by the dose rule below
     allowed_tokens, allowed_doses = set(), set()

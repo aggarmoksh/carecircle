@@ -1,5 +1,6 @@
 """Every outbound message goes through here: guard check, 24 h window check, send, audit with a reason. Also relay and queue."""
-from . import config, guard, lang, record, tmpl
+import os
+from . import cards, config, guard, lang, links, record, tmpl
 from .clock import clock
 from .db import audit
 
@@ -20,7 +21,20 @@ class Outbox:
         code = m.get("language") or "en"
         return self.send(member_id, tmpl.render(kind, code, **slots), reason, sender_text, lang_used=code, english=tmpl.render(kind, "en", **slots))
 
-    def send(self, member_id, text, reason, sender_text="", free=False, lang_used="en", english=None):
+    def _card_url(self):
+        base = (os.environ.get("PUBLIC_BASE_URL") or links.BASE_DEFAULT).rstrip("/")
+        return f"{base}/card/{cards.current(self.conn)}.png"
+
+    def send_card(self, member_id, kind, reason, **slots):
+        """The Today card (a PNG at an unguessable address that expires after 24 hours) with a caption template and the member's board link."""
+        m = record.member(self.conn, member_id)
+        code = m.get("language") or "en"
+        slots["link"] = self.link_for(m)
+        base = (os.environ.get("PUBLIC_BASE_URL") or links.BASE_DEFAULT).rstrip("/")
+        media = f"{base}/card/{cards.current(self.conn)}.png"
+        return self.send(member_id, tmpl.render(kind, code, **slots), reason, lang_used=code, english=tmpl.render(kind, "en", **slots), media_url=media)
+
+    def send(self, member_id, text, reason, sender_text="", free=False, lang_used="en", english=None, media_url=None):
         """free=True: a free-text answer to a record question, which Spark may phrase in the member's language (checked by code). Everything else is sent as given."""
         m = record.member(self.conn, member_id)
         now = clock.now()
@@ -36,8 +50,8 @@ class Outbox:
             return None
         english = text if english is None else english
         text, used = lang.localize(self.conn, text, m) if free else (text, lang_used)
-        res = self.channel.send_text(m, text)
-        audit(self.conn, "outbound", member_id, dict({"text": text, "sid_prefix": str(res.get("sid", ""))[:6]}, **({"language": used, "english": english} if used != "en" else {})), reason)
+        res = self.channel.send_text(m, text, media_url) if media_url else self.channel.send_text(m, text)
+        audit(self.conn, "outbound", member_id, dict({"text": text, "sid_prefix": str(res.get("sid", ""))[:6]}, **({"card": True} if media_url else {}), **({"language": used, "english": english} if used != "en" else {})), reason)
         self.sent.append((member_id, text))
         return text
 
@@ -47,8 +61,8 @@ class Outbox:
         audit(self.conn, "relay_queued", member_id, text, reason)
 
     def link_for(self, m):
-        """The board link for this member (a personal read-only link), or '' when none is set up."""
-        return ""
+        """The board link for this member (a personal read-only link)."""
+        return links.link(self.conn, m["id"])
 
     def relay_t(self, tkind, slots, exclude, reason, kind="relay"):
         """relay() with a fixed template rendered in each recipient's language."""
@@ -96,7 +110,9 @@ class Outbox:
         for mid, rows in digests.items():
             code = record.member(self.conn, mid).get("language") or "en"
             body = chr(10).join("- " + r["text"].replace("CareCircle: ", "") for r in rows)
-            self.send(mid, tmpl.render("daily_header", code) + chr(10) + body, "daily summary at 8 PM", lang_used=code, english="")
+            mm = record.member(self.conn, mid)
+            text = tmpl.render("daily_header", code) + chr(10) + body + chr(10) + tmpl.render("board_line", code, link=self.link_for(mm))
+            self.send(mid, text, "daily summary at 8 PM", lang_used=code, english="", media_url=self._card_url())
             for r in rows:
                 self.conn.execute("UPDATE queue SET sent_at=? WHERE id=?", (clock.iso(), r["id"]))
             self.conn.commit()
