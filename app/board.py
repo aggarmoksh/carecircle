@@ -70,7 +70,7 @@ def state(conn, now=None):
     return dict(now=record.iso(now), patient=config.PATIENT_NAME, patient_tz=str(tz), next_dose=nxt, patient_local=now.astimezone(tz).strftime("%a %d %b %H:%M"), speed=clock.speed,
                 members=members, schedule=sched, doses=doses, ladder=_ladder(conn, now, ms), organiser=_organiser(conn, now),
                 labs=lab_out, lab_html=labviz.section_html(reps), lab_latest=dict(date=last["report_date"], out_of_range=len(labs.out_of_range(last["tests"]))) if last else None,
-                tasks=tasks, audit=log)
+                tasks=tasks, audit=log, adherence=adherence(conn, today - timedelta(days=6), today, now)[0])
 
 
 # ---------------- doctor summary ----------------
