@@ -19,6 +19,7 @@ def _slot(s):
     return f"{med} {t}".strip()
 
 
+LANGNAME = {"hi": "Hindi", "es": "Spanish"}
 TYPES = {"pill_organiser": "the pill organiser", "discharge_sheet": "a discharge sheet", "prescription": "a prescription", "lab_report": "a lab report", "other": "a photo"}
 DOSE = {"confirmed": "gave", "late_confirmed": "gave (late)", "skipped": "skipped", "unsure": "wasn't sure about"}
 
@@ -33,7 +34,7 @@ def sentence(row, ms, tz):
         t = datetime.fromisoformat(row["at"].replace("Z", "+00:00")).astimezone(tz).strftime("%H:%M")
     except (TypeError, ValueError):
         t = ""
-    icon, text = "dot", (row["reason"] or k.replace("_", " "))
+    icon, text, extra = "dot", (row["reason"] or k.replace("_", " ")), {}
     if k == "inbound":
         kind = j.get("kind")
         icon, text = ("camera", f"{who} sent a photo") if kind == "image" else ("mic", f"{who} sent a voice note") if kind in ("voice", "audio") else ("chat", f"{who} sent a message")
@@ -52,6 +53,9 @@ def sentence(row, ms, tz):
     elif k == "outbound":
         m = re.search(r"([a-z]+)_(\d\d:\d\d)", row["reason"] or "")
         icon, text = "send", f"CareCircle messaged {who}" + (f" about {m.group(1)} {m.group(2)}" if m else "")
+        if j.get("language") in LANGNAME:
+            text += f" in {LANGNAME[j['language']]}"
+            extra["detail"] = chr(10).join([f"Sent in {LANGNAME[j['language']]}: {j.get('text', '')}", f"English original: {j.get('english', '')}"])
     elif k == "relay_queued":
         icon, text = "clock", f"A message for {who} is waiting for their daytime"
     elif k == "relay_suppressed":
@@ -86,7 +90,7 @@ def sentence(row, ms, tz):
         icon, text = "clock", "The demo clock was changed"
     elif k == "intent_override":
         icon, text = "pill", f"{who}'s message was read as a dose report"
-    return dict(text=text, icon=icon, time=t)
+    return dict(text=text, icon=icon, time=t, **extra)
 
 
 def collapse(items):

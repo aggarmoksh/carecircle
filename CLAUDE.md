@@ -66,3 +66,10 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 - Board and summary follow docs/DESIGN.md; the doctor summary is one page, trends are board-only.
 - Demo scene: tools/demo_reset.py --scene thursday (Thursday 07:55, Wednesday 20:00 recorded as missed, or1.jpeg from r2 reports Wednesday PM).
 - Replies in a member's language (members.language, m2 = hi): Spark rewrites the English reply; code checks that every name and number is unchanged, the guard runs on the result, otherwise English is sent.
+
+## Phase 4b decisions
+- One nudge per person per dose time: open doses are grouped by (due date, time) in record.group_open; escalation.tick sends one message per group per ladder step; "done" confirms the whole group, a reply naming medicines confirms only those; relays and the missed alert are grouped the same way. A single medicine keeps the short wording.
+- Activity feed: repeats of the same sentence in the same minute collapse to "x3"; the page shows the newest 15 with "Show all". Outbound lines in another language read "messaged Sofía in Spanish" with the sent text and the English original behind "details".
+- P9 (web-search medicine-name check) FAILED its pass bar (10 of 17); the draft-summary check was not built. Code is in app/medcheck.py and probes/p9_run.py; results in outputs/p9_results.json.
+- Cast: m5 is Sofía (family friend, Madrid, remote, simulated, language es, default daily). app/lang.py has per-language hints (Hindi time words and "दवा" after a medicine name; Spanish time wording).
+- Spend cap is 8.00. After edits to board.html run `node --check` on its script.

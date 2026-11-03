@@ -5,11 +5,15 @@ import re
 from . import guard, llm, record
 from .db import audit
 
-LANGS = {"hi": "Hindi in Devanagari script"}
+LANGS = {"hi": "Hindi in Devanagari script", "es": "Spanish"}
+HINT = {"hi": (" Write a clock time as the same digits with the Hindi time word, for example '8 PM' becomes 'शाम 8 बजे' and '8 AM' becomes 'सुबह 8 बजे'. "
+               "After a medicine name you may add the word दवा (for example 'metformin वाली दवा'), because the name alone is not a Hindi word."),
+        "es": (" Write a clock time with the same digits, for example '8 PM' becomes 'las 8 de la tarde' and '8 AM' becomes 'las 8 de la mañana'. "
+               "You may put the word medicamento before a medicine name. Use 'usted' wording only if the message is formal; otherwise a warm, plain tone.")}
 SCHEMA = {"name": "localized", "schema": {"type": "object", "additionalProperties": False, "required": ["text"], "properties": {"text": {"type": "string"}}}}
 PROMPT = ("Rewrite this short message for a family member in {lang}. Keep it as short as the original and add nothing. Copy every medicine name, dose, clock time and number "
           "EXACTLY as written, in Latin letters and ASCII digits (never translate, transliterate or convert them). Keep people's names in Latin letters. Give no advice. "
-          "Message: \"{text}\"")
+          "{hint} Message: \"{text}\"")
 DEVA_DIGITS = re.compile("[०-९]")
 
 
@@ -38,7 +42,7 @@ def localize(conn, text, member):
     if code not in LANGS:
         return text, "en"
     try:
-        r, _, _ = llm.spark_json("phase4", f"lang-{code}", [{"role": "user", "content": PROMPT.format(lang=LANGS[code], text=text)}], SCHEMA)
+        r, _, _ = llm.spark_json("phase4", f"lang-{code}", [{"role": "user", "content": PROMPT.format(lang=LANGS[code], hint=HINT.get(code, ""), text=text)}], SCHEMA)
         out = r["text"].strip()
     except Exception as e:
         audit(conn, "lang_fallback", member["id"], type(e).__name__, "translation failed; sent in English")

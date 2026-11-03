@@ -25,11 +25,20 @@ thu = target.astimezone(tz).date()
 states = {k: v for k, v in json.loads((ROOT / "tests" / "organiser_real_labels_v2.json").read_text(encoding="utf-8"))["photos"]["or1"].items() if not k.startswith("_")}
 conn.execute("INSERT INTO documents(path,sender,status,type,confidence,extraction_json,created_at) VALUES(?,?,?,?,?,?,?)",
              (str(ROOT / "media" / "organiser_real" / "or1.jpeg"), "m2", "audited", "pill_organiser", 0.97, json.dumps(states), record.iso(target.replace(minute=58) - timedelta(hours=1, minutes=-3))))
-record.set_relay_pref(conn, "m5", "stop")
+record.set_relay_pref(conn, "m4", "stop")
 conn.execute("UPDATE members SET last_inbound_at=? WHERE kind='real'", (record.iso(target),))
 conn.commit()
-clock.set(target + timedelta(minutes=30), speed=0)                         # 08:25 patient-local: the 08:00 doses are past due + grace
+# translations are canned here (no model calls for the screenshots); they are the kind of text the real run produced (outputs/p4b_*.json)
+CANNED = {"Hi Meena, has Nanaji had his 8 AM medicines: amlodipine, aspirin, metformin? Reply done, or tell me which ones.":
+          "नमस्ते Meena, क्या Nanaji ने सुबह 8 बजे वाली amlodipine, aspirin, metformin दवा ली? हो गया लिखो, या बताओ कौन सी नहीं।",
+          "CareCircle: metformin, atorvastatin 20:00 for Nanaji is recorded as missed.":
+          "CareCircle: metformin, atorvastatin 20:00 para Nanaji está registrado como omitido."}
+from app import llm
+llm.spark_json = lambda ph, lb, m, sc: ({"text": CANNED.get(m[0]["content"].split('Message: "', 1)[1].rsplit('"', 1)[0], "")}, 0, 0)
+clock.set(target, speed=0)                                                 # 07:55 patient-local
 ob = outbox.Outbox(conn, FakeChannel())
+ob.relay("CareCircle: metformin, atorvastatin 20:00 for Nanaji is recorded as missed.", [], "state change: dose missed", kind="alert")
+clock.set(target + timedelta(minutes=30), speed=0)                         # 08:25 patient-local: the 08:00 doses are past due + grace
 for _ in range(6):
     escalation.tick(conn, ob)
     clock.set(clock.now() + timedelta(seconds=61), speed=0)

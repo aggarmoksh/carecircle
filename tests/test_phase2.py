@@ -125,8 +125,8 @@ def test_lab_question_is_a_medical_question_not_a_lab_answer():
 def test_board_state_and_charts():
     conn, ob, ch = circle()
     s = board.state(conn, clock.now())
-    assert [m["name"] for m in s["members"]] == ["Arjun", "Meena", "Kabir", "Sunita", "Ravi"]
-    assert {m["name"] for m in s["members"] if m["simulated"]} == {"Sunita", "Ravi"}
+    assert [m["name"] for m in s["members"]] == ["Arjun", "Meena", "Kabir", "Sunita", "Sofía"]
+    assert {m["name"] for m in s["members"] if m["simulated"]} == {"Sunita", "Sofía"}
     assert s["lab_latest"] == dict(date="2026-10-29", out_of_range=4)
     assert 'class="spark"' not in s["lab_html"]                               # no test appears in two reports in the seed
     labs.load_fixture(conn, ROOT / "tests" / "lab_labels.json", "L1", "m3", "2026-10-31T00:00:00Z")
