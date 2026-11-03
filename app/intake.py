@@ -238,21 +238,33 @@ def _dose(conn, ob, mid, text, now):
     mem = "; ".join(f"{m['id']} = {m['name']} ({m['relationship']})" for m in record.members(conn))
     r, _, _ = llm.spark_json("phase1", "parse", [{"role": "user", "content": PARSE_PROMPT.format(members=mem, slots=", ".join(sl), open=", ".join(s for s, _ in opens) or "none", sender=mid, text=text)}], PARSE_SCHEMA(sl))
     slot, d = r["slot"], None
+    groups = record.group_open(conn, now)
     if slot == "none":
-        if len(opens) == 1:
-            slot, d = opens[0]
-        elif len(opens) == 0:
+        if len(groups) == 1:                       # 'done' with one dose time waiting: all of that time's medicines
+            (d, _t), gs = groups[0]
+            slot = gs[0]
+        elif not groups:
             _send(ob, mid, "Nothing is waiting for confirmation right now. Which dose do you mean?", "dose update with no open dose", text)
             return
         else:
-            _send(ob, mid, "Which dose do you mean? Waiting: " + ", ".join(s.replace("_", " ") for s, _ in opens), "ambiguous dose update", text)
+            _send(ob, mid, "Which dose do you mean? Waiting: " + "; ".join(f"{record.clock12(t)}: {record.med_names(gs)}" for (_d, t), gs in groups), "ambiguous dose update", text)
             return
-    typ, d = record.log_confirmation(conn, slot, r["action"], r["actor"], mid, f"msg from {mid}", None, now, d)
+    # doses due at the same time are one question: a reply that names medicines confirms those, any other reply confirms the whole time
+    chosen = [slot]
+    for (gd, gt), gs in groups:
+        if slot in gs and (d is None or d == gd):
+            low = text.lower()
+            named = [x for x in gs if x.rsplit("_", 1)[0].lower() in low]
+            chosen, d = (named or gs), gd
+            break
+    typ = None
+    for sl in chosen:
+        typ, d = record.log_confirmation(conn, sl, r["action"], r["actor"], mid, f"msg from {mid}", None, now, d)
+        audit(conn, "dose_event", mid, {"slot": sl, "type": typ, "actor": r["actor"], "date": str(d)}, "dose update parsed against the live schedule")
     who = nm(conn, r["actor"])
-    label = slot.replace("_", " ")
+    label = (record.med_names(chosen) + " " + chosen[0].rsplit("_", 1)[1]) if len(chosen) > 1 else chosen[0].replace("_", " ")
     verb = {"given": "gave", "skipped": "skipped", "unsure": "wasn't sure about"}[r["action"]]
     pre = "late: " if typ == "late_confirmed" else ""
-    audit(conn, "dose_event", mid, {"slot": slot, "type": typ, "actor": r["actor"], "date": str(d)}, "dose update parsed against the live schedule")
     _send(ob, mid, f"Logged: {pre}{label} {r['action']} ({who}). Thanks.", "dose update logged", text)
     verb_line = f"{who} {verb} {label}." if r["actor"] != "patient" else f"{config.PATIENT_NAME} took {label} himself." if r["action"] == "given" else f"{label}: {r['action']}."
     ob.relay("CareCircle: " + verb_line, [mid], "state change: dose event")

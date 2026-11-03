@@ -26,7 +26,7 @@ m["language"] = "hi"
 rows = []
 for en in REPLIES:
     out, used = lang.localize(conn, en, m)
-    rows.append(dict(english=en, language=used, faithful=lang.faithful(conn, en, out), guard_ok=guard.check(conn, out)[0], unchanged_if_english=(out == en)))
+    rows.append(dict(english=en, hindi=out, language=used, faithful=lang.faithful(conn, en, out), guard_ok=guard.check(conn, out)[0], unchanged_if_english=(out == en)))
 res = dict(replies=len(rows), localized=sum(r["language"] == "hi" for r in rows), fell_back_to_english=sum(r["language"] == "en" for r in rows),
            guard_failures=sum(not r["guard_ok"] for r in rows), name_or_number_changed=sum(not r["faithful"] for r in rows), rows=rows)
 (ROOT / "outputs" / "p4_hindi.json").write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")

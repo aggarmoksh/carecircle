@@ -59,6 +59,7 @@ main{max-width:1440px;margin:0 auto;padding:0 32px 32px;display:grid;grid-templa
 /* activity */
 .act{list-style:none;margin:0;padding:0}.act li{display:grid;grid-template-columns:20px 52px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line);align-items:start}.act li:first-child{border:0}
 .act time{font-weight:500;color:var(--muted)}.act .ic{color:var(--muted)}.act details summary{display:inline;cursor:pointer;color:var(--muted);font-size:13px;margin-left:8px}
+.act li.more{display:block}.linkbtn{font:inherit;font-size:14px;color:#2563EB;background:none;border:0;padding:4px 0;cursor:pointer;text-decoration:underline}.linkbtn:focus-visible{outline:2px solid #E8833A;outline-offset:2px}
 .act code{display:block;font:12px/18px ui-monospace,Consolas,monospace;color:var(--muted);white-space:pre-wrap;word-break:break-word}
 .members{width:100%;border-collapse:collapse}.members td,.members th{padding:6px 8px;border-top:1px solid var(--line);text-align:left;font-size:14px}.members th{color:var(--muted);font-weight:500;font-size:13px;border:0}
 footer{max-width:1440px;margin:0 auto;padding:8px 32px 32px;color:var(--muted);font-size:13px;line-height:18px}
@@ -109,7 +110,7 @@ const skipWhy=w=>w.replace(/^asleep \(local (.*)\)$/,'asleep, $1').replace(/^cho
 const RELAY={everything:'Every update',duties:'Own duties and alerts only',daily:'Alerts and a daily summary at 8 PM',stop:'Stopped until they write'};
 const SWORD={given:'given',not_yet_due:'not yet due',due:'due, not confirmed',overdue:'overdue, escalating',skipped:'skipped',unsure:'unsure',missed:'missed'};
 const SICON={given:'check',overdue:'bang',due:'bang',missed:'cross',skipped:'cross',not_yet_due:'clock',unsure:'bang'};
-let S=null,lastArc='',lastLab='',lastAudit='',selRep=0;
+let S=null,lastArc='',lastLab='',lastAudit='',selRep=0,allAct=false;
 const hhmm=(iso,tz)=>new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(iso));
 const partOf=t=>{const hr=+t.slice(0,2);return hr<12?'Morning':hr<17?'Afternoon':'Evening'};
 const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
@@ -178,9 +179,13 @@ function render(s){
  fill($('members'),h('tr',null,h('th',null,'Member'),h('th',null,'Where'),h('th',null,'Now'),h('th',null,'Updates')),
   s.members.map(m=>h('tr',null,h('td',null,m.name,' ',h('span',{class:'mut'},m.relationship)),h('td',null,m.local+' '+m.city),
    h('td',null,h('span',{class:'chip'},ic(m.awake?'sun':'moon'),m.awake?'awake':'asleep'),' ',m.simulated?h('span',{class:'chip'},'simulated'):''),h('td',null,RELAY[m.relay]||m.relay))));
- const key=JSON.stringify(s.audit);
- if(key!==lastAudit){lastAudit=key;fill($('audit'),s.audit.map(a=>h('li',null,ic(a.icon),h('time',null,a.time),h('div',null,a.text,
-   h('details',{style:'display:inline'},h('summary',null,'details'),h('code',null,a.at.slice(0,19).replace('T',' ')+' UTC · '+a.kind+(a.actor?' · '+a.actor:'')+(a.detail?'\n'+a.detail:''))))))) }
+ const key=JSON.stringify(s.audit)+allAct;
+ if(key!==lastAudit){lastAudit=key;const rows=allAct?s.audit:s.audit.slice(0,15);
+  fill($('audit'),rows.map(a=>h('li',null,ic(a.icon),h('time',null,a.time),h('div',null,a.text,a.n>1?h('span',{class:'mut'},' ×'+a.n):'',
+   h('details',{style:'display:inline'},h('summary',null,'details'),h('code',null,a.at.slice(0,19).replace('T',' ')+' UTC · '+a.kind+(a.actor?' · '+a.actor:'')+(a.detail?'
+'+a.detail:'')))))),
+   s.audit.length>15?[h('li',{class:'more'},h('button',{type:'button',class:'linkbtn',id:'actmore'},allAct?'Show the latest 15':'Show all '+s.audit.length))]:[]);
+  const mb=$('actmore');if(mb)mb.onclick=()=>{allAct=!allAct;lastAudit='';render(s)}}
 }
 function fill(el,...kids){el.replaceChildren(...kids.flat())}
 function chipEl(st){const c=h('span',{class:'chip '+(st==='given'?'within':st==='missed'||st==='skipped'?'missed':'out')},ic(SICON[st]||'dot'),SWORD[st]||st);return c}

@@ -165,6 +165,24 @@ def next_dose_due(conn, slot, d):
     return due_at(conn, f"{name}_{later[0]}", d) if later else due_at(conn, f"{name}_{times[0]}", d + timedelta(days=1))
 
 
+def clock12(t):
+    """'08:00' -> '8 AM', '20:30' -> '8:30 PM' (how the nudges name a dose time)."""
+    h, m = (int(x) for x in t.split(":"))
+    return f"{(h % 12) or 12}{':%02d' % m if m else ''} {'AM' if h < 12 else 'PM'}"
+
+
+def group_open(conn, now):
+    """Open occurrences grouped by (due date, time of day): [((d, 'HH:MM'), [slot, ...]), ...] oldest first. Doses due at the same time are one thing to the family."""
+    g = {}
+    for slot, d in open_occurrences(conn, now):
+        g.setdefault((d, slot.rsplit("_", 1)[1]), []).append(slot)
+    return sorted((k, sorted(v)) for k, v in g.items())
+
+
+def med_names(slots):
+    return ", ".join(s.rsplit("_", 1)[0] for s in slots)
+
+
 def events(conn, slot, d):
     return [dict(r) for r in conn.execute("SELECT * FROM dose_events WHERE slot=? AND due_date=? ORDER BY id", (slot, str(d)))]
 

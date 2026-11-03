@@ -87,3 +87,17 @@ def sentence(row, ms, tz):
     elif k == "intent_override":
         icon, text = "pill", f"{who}'s message was read as a dose report"
     return dict(text=text, icon=icon, time=t)
+
+
+def collapse(items):
+    """Repeats of the same sentence in the same minute become one entry with a count ('x3'); the first (newest) entry keeps its details."""
+    out, seen = [], {}
+    for it in items:
+        k = (it["text"], it["time"])
+        if k in seen:
+            seen[k]["n"] += 1
+            continue
+        it["n"] = 1
+        seen[k] = it
+        out.append(it)
+    return out

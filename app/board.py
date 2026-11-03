@@ -63,8 +63,8 @@ def state(conn, now=None):
                     tests=[dict(test=t["test"], value=t["value"], unit=t["unit"], range_text=t["range_text"], status=t["status"], flag=t["printed_flag"]) for t in r["tests"]]) for r in reps]
     last = reps[-1] if reps else None
     tasks = [dict(id=r["id"], text=r["text"], owner=_name(ms, r["owner"]) if r["owner"] else None) for r in conn.execute("SELECT * FROM tasks WHERE status='open' ORDER BY id")]
-    log = [dict(at=r["at"], kind=r["kind"], actor=r["actor"], detail=(r["detail"] or "")[:160], reason=r["reason"], **activity.sentence(r, ms, tz))
-           for r in conn.execute("SELECT at,kind,actor,detail,reason FROM audit_log ORDER BY id DESC LIMIT 30")]
+    log = activity.collapse([dict(at=r["at"], kind=r["kind"], actor=r["actor"], detail=(r["detail"] or "")[:400], reason=r["reason"], **activity.sentence(r, ms, tz))
+                             for r in conn.execute("SELECT at,kind,actor,detail,reason FROM audit_log ORDER BY id DESC LIMIT 200")])[:100]
     nd = record.next_due(conn, now)
     nxt = dict(medicine=nd[0].rsplit("_", 1)[0], time=nd[0].rsplit("_", 1)[1], day="today" if nd[1].astimezone(tz).date() == today else "tomorrow") if nd else None
     return dict(now=record.iso(now), patient=config.PATIENT_NAME, patient_tz=str(tz), next_dose=nxt, patient_local=now.astimezone(tz).strftime("%a %d %b %H:%M"), speed=clock.speed,
