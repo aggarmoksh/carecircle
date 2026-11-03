@@ -196,3 +196,29 @@ def test_scene_command_prints_the_filming_steps_and_sends_nothing(tmp_path, scen
     assert not (tmp_path / "s.db-wal").exists() or True
     con = db.connect(tmp_path / "s.db")
     assert con.execute("SELECT COUNT(*) FROM audit_log WHERE kind='outbound'").fetchone()[0] == 0                 # the tool sent nothing
+
+
+# ---------------- Phase 5a: filming cap and send spacing ----------------
+def test_filming_cap_is_80_counted_from_a_fresh_counter_and_sends_are_spaced(monkeypatch, tmp_path):
+    from app import channel, config
+    assert config.PHASE1_MESSAGE_CAP == 80 and config.SEND_SPACING_SECONDS == 3.0
+    assert channel.COUNTER.name == "outbound_filming.json"
+    sleeps, now = [], [1000.0]
+    monkeypatch.setattr(channel.time, "sleep", lambda s: (sleeps.append(round(s, 2)), now.__setitem__(0, now[0] + s)))
+    monkeypatch.setattr(channel.time, "time", lambda: now[0])
+    channel._last_send[0] = 0.0
+    channel._space()                                       # first send after a long quiet period: no wait
+    now[0] += 1.0
+    channel._space()                                       # 1 s later: waits the other 2 s
+    channel._space()                                       # immediately after: waits the full 3 s
+    assert sleeps == [2.0, 3.0]
+
+
+def test_scene_steps_say_the_real_defaults_differ_and_the_ladder_matches_the_updated_script():
+    sys.path.insert(0, str(ROOT / "tools"))
+    import scene_steps
+    assert "the real defaults differ" in scene_steps.steps("monday")
+    th = scene_steps.steps("thursday")
+    assert "Sunita (simulated, nearby) is asked next" in th and "Kabir" in th and "while they sleep" in th and "one message every 3 seconds" in th
+    script = (ROOT / "docs" / "VIDEO_SCRIPT.md").read_text(encoding="utf-8")
+    assert "Simulated neighbour Sunita is asked next, then the arc moves to Arjun" in script

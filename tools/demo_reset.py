@@ -41,7 +41,7 @@ def main(argv=None):
     if scene:
         from app import channel
         used, cap = channel.outbound_count(), config.PHASE1_MESSAGE_CAP
-        print(f"Outbound WhatsApp messages used so far: {used} of {cap}" + ("  (a full run of this scene sends about 15-20: raise the cap or use a fresh counter file first)" if cap - used < 20 else ""))
+        print(f"Outbound WhatsApp messages used so far: {used} of {cap}" + ("  (a full run of this scene sends about 15-20 messages, spaced 3 seconds apart)" if cap - used < 20 else ""))
         print("Server: LIVE mode (CARECIRCLE_DRY_RUN must not be set).")
         if os.environ.get("CARECIRCLE_DRY_RUN") == "1":
             print("WARNING: CARECIRCLE_DRY_RUN=1 is set in this shell; unset it before you start the server, or nothing will reach the phones.")

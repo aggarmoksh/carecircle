@@ -7,5 +7,6 @@ WINDOW_HOURS = 24                                               # WhatsApp free-
 IMAGE_CONF_THRESHOLD = 0.7
 PATIENT_NAME = "Nanaji"
 PATIENT_TZ = "Asia/Kolkata"
-PHASE1_MESSAGE_CAP = 40
+PHASE1_MESSAGE_CAP = int(os.environ.get("CC_MESSAGE_CAP", 80))      # outbound WhatsApp messages: the filming cap, counted from 2026-11-03
+SEND_SPACING_SECONDS = 3.0                                          # the Twilio sandbox sends at most one message every 3 seconds; sends are spaced, never burst
 DRY_RUN = os.environ.get("CARECIRCLE_DRY_RUN", "0") == "1"

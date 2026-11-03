@@ -3,11 +3,13 @@ no numbers, keys or tokens appear here. The tool sends nothing: every message be
 
 COMMON = """\
 Before filming (once): the tunnel is running and is not restarted; from r1, r2 and r3 re-join the sandbox if it has expired, then send "hi" from each phone (this opens the 24 h window).
+Sends are spaced: the sandbox accepts one message every 3 seconds, so the app waits between sends and a burst of relays takes a few seconds. Do not send from the phones faster than that.
 Mode: the server must be LIVE (CARECIRCLE_DRY_RUN not set), otherwise nothing reaches the phones.
 Board: your own link, 1440 wide, light mode, zoom 110%. Members Sunita and Sofía are simulated: nothing arrives on a phone for them; look for them in the Activity feed (details)."""
 
 MONDAY = """\
 SCENE monday: fresh circle, no schedule yet, every member's update choice set to "everything" for filming, patient clock Monday 07:55 (Kolkata).
+Note: the real defaults differ. Outside this scene a remote member (Arjun, Kabir, Sofía) starts on "alerts and a daily summary", so these relays would wait for the 8 PM summary; a nearby member (Meena, Sunita) starts on "everything".
 Beat 0:20-0:55 (the discharge sheet)
   1. r2 (Meena's phone): send the photo of the printed discharge sheet.
      Arrives on r2, in Hindi: "मैंने यह पढ़ा:", the medicine lines exactly as extracted, then "यह सूची शुरू करने के लिए 'हाँ' या YES लिखें, या बताएं क्या गलत है।"
@@ -40,9 +42,9 @@ Beat 1:15-1:55 (the ladder), the board's Now card
   1. Let the board clock run to 08:15, or open "Demo controls", type the admin token and press "Jump to next due + grace".
      Board: "Morning metformin, overdue", the three 08:00 doses as cards under it.
   2. Arrives on r2 (Meena), one private message, in Hindi: "नमस्ते Meena, क्या Nanaji ने सुबह 8 बजे वाली amlodipine, aspirin और metformin दवा ले ली? 'done' लिखें, या बताएं कौन सी ली।"  Do not answer.
-  3. About a minute later (one step is 60 s): Sunita (simulated, nearby) is asked first; look for it in Activity. Then the arc moves out to Arjun.
+  3. About a minute later (one step is 60 s): Sunita (simulated, nearby) is asked next; look for it in Activity. About a minute after that the arc moves out to Arjun.
      Arrives on r1 (Arjun, 19:01 in Los Angeles): "CareCircle: Meena hasn't confirmed the 8 AM medicines for Nanaji yet (amlodipine, aspirin, metformin). Can you check and tell me?"
-  4. Within a minute or two after that, the board shows Kabir ("asleep, 03:0x London") and Sofía ("asleep, 04:0x Madrid") as skipped. Note the order: Kabir and Sofía appear after Arjun has been asked, not before.
+  4. On The Circle and in Activity, Kabir ("asleep, 03:0x London") and Sofía ("asleep, 04:0x Madrid") are shown as skipped while they sleep: nobody wakes them. Order on the board: Meena, then Sunita, then Arjun; the two skips appear within a minute or two of Arjun being asked.
 Beat 1:55-2:15 (the organiser photo)
   5. r2: send the photo of the ice-tray pill organiser (media/organiser_real/or1.jpeg).
      Arrives on r2, in Hindi: "दवा के डिब्बे में बुधवार शाम वाला हिस्सा अभी भरा है: वह दवा नहीं दी गई।"

@@ -15,7 +15,7 @@ OUT = ROOT / "outputs"
 OUT.mkdir(exist_ok=True)
 SIM_INBOX = OUT / "sim_inbox.jsonl"
 DRYRUN_OUTBOX = OUT / "dryrun_outbox.jsonl"
-COUNTER = ROOT / "data" / os.environ.get("CC_COUNTER_FILE", "outbound_phase3.json")
+COUNTER = ROOT / "data" / os.environ.get("CC_COUNTER_FILE", "outbound_filming.json")
 _lock = threading.Lock()
 
 
@@ -26,6 +26,18 @@ def _append(path, obj):
 
 def outbound_count():
     return json.loads(COUNTER.read_text())["n"] if COUNTER.exists() else 0
+
+
+_last_send = [0.0]
+
+
+def _space():
+    """The sandbox allows one message every 3 seconds: wait out the rest of the gap before every real send."""
+    with _lock:
+        wait = config.SEND_SPACING_SECONDS - (time.time() - _last_send[0])
+        if wait > 0:
+            time.sleep(wait)
+        _last_send[0] = time.time()
 
 
 def _bump():
@@ -69,6 +81,7 @@ class TwilioSandbox(Channel):
     def send_text(self, member, text, media_url=None):
         from twilio.base.exceptions import TwilioRestException
         _bump()  # count before sending: stop before exceeding the cap
+        _space()
         t0 = time.time()
         try:
             m = self.client.messages.create(from_=self.sender, to="whatsapp:" + self.numbers[member["recipient_idx"] - 1],
