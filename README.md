@@ -2,11 +2,13 @@
 
 **The care log that writes itself, in the chat you already use.**
 
-When someone we love is ill, the people who care for them are scattered: a grandson in Los Angeles, a cousin in London, an aunt at home in Kolkata. They coordinate in one noisy WhatsApp group ("80 unread messages and zero context"), and nobody is sure whether the morning pills were given.
+When someone we love is ill, the people who care for them are scattered: a grandson in Los Angeles, a cousin in London, a friend in Madrid, and an aunt at his side. They coordinate in one noisy WhatsApp group ("80 unread messages and zero context"), and nobody is sure whether the morning pills were given.
 
 CareCircle is a WhatsApp agent that keeps one shared care record for one patient. A family member photographs the discharge sheet; CareCircle reads it, asks for a "yes", and from then on nudges the right person when a dose is not confirmed, privately and in their language, then the next person who is awake, wherever they are. It reads a voice note ("Maine Nanaji ko subah ki metformin de di") and a photo of the weekly pill organiser, compares lab values only with the range printed on the report, and keeps a one-page summary for the doctor.
 
 **It coordinates. It never gives medical advice.** Medical questions are saved as tasks for the doctor's visit and answered with a fixed refusal; urgent symptoms get a fixed "call emergency services" message.
+
+**Try the interactive replay** (fictional data, one self-contained page, works offline): [https://aggarmoksh.github.io/carecircle/replay.html](https://aggarmoksh.github.io/carecircle/replay.html). It is also in this repository as [docs/replay.html](docs/replay.html).
 
 > A prototype built on Meta's Muse models and the Twilio WhatsApp Sandbox. Fictional patient and fictional data. Not a medical device, not for real patient care.
 
@@ -44,7 +46,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the diagram. In short:
 
 Pre-registered where it matters; every table and its caveat is in [docs/EVALS.md](docs/EVALS.md). Highlights (all small samples, one run per input unless stated):
 
-- **Reading sheets:** 78/78 fields exact on 3 fictional discharge sheets (photos of a screen). On 4 real documents the printed ones had 0 confidently wrong lines once clerical label errors were corrected (2 before; the cause was a unit bug, fixed), and the handwritten ones were mostly dropped, hence the handwriting rule.
+- **Reading sheets:** 78/78 fields exact on 3 fictional discharge sheets (photos of a screen). On 4 real, redacted documents (2 printed, 2 handwritten), scored by medicine names: the printed ones read 15 of 15 names. The pre-registered score showed 2 misses, both clerical errors in our own answer key (two typos and two documents' labels swapped), corrected and reported side by side. On handwriting it misread 1 name and flagged 4 lines for a person to check, which is why every handwritten line now needs a person's confirmation.
 - **Voice:** 12/12 notes routed to the right dose update, including Hindi and Punjabi (one speaker, one phone).
 - **Lab reports:** 54/54 fields on 2 fictional reports, 0 wrong statuses, 0 invented ranges.
 - **Organiser photos:** Spark alone 14/14 on 8/8 real photos. **SAM 3.1 dropped:** 3 of 4 AI photos and 2 of 8 real ones.

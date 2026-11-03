@@ -106,7 +106,7 @@ The scoring tool printed counts only; file contents were never printed or copied
 | 3 | printed | 8 | 8 | 8 | 0 | 0 | 0 |
 | 4 | handwritten | 3 | 2 | 0 | 3 | 0 | 0 |
 
-Pre-registered target: printed documents 0 confidently wrong. **Doc 1 has 2, a miss.** The cause was a unit bug, not a reading error: "2 TSF" came back as 2.0 mL because the unit list had no teaspoon (fixed: units are kept as printed, never converted).
+Pre-registered target: printed documents 0 confidently wrong. **Doc 1 scored 2, a miss, but both were clerical errors in our own answer key** (two spelling typos in its labels; the labels of documents 2 and 4 had also been swapped), so the reading was right and the key was wrong. The corrected score is reported next to the pre-registered one, below. Separately, the check found a real extraction bug: "2 TSF" came back as 2.0 mL because the unit list had no teaspoon (fixed: units are kept as printed, never converted). That concerned a dose, which this names-only scoring does not count.
 
 Post-hoc rescore with the advisor's corrected labels (clerical errors: labels of documents 2 and 4 had been swapped, two typos on doc 1, one medicine missing for doc 4), from the saved extractions with no new calls. Reported next to the pre-registered score, not instead of it:
 
@@ -121,7 +121,7 @@ Post-hoc rescore with the advisor's corrected labels (clerical errors: labels of
 | 4 | pre-registered | 3 | 0 | 0 | 3 | 0 | 0 |
 | 4 | corrected | 2 | 0 | 1 | 1 | 0 | 0 |
 
-With the corrected labels the printed documents have 0 confidently wrong lines and the handwritten ones 1 in total (target <= 1). That one line came back "clear" on a handwritten sheet. The handwriting rule added afterwards (every line on a handwritten sheet is marked unsure and YES is refused until each name is retyped) is covered by a unit test, not by a new P8 run. On the handwritten documents the model dropped most label medicines, which is why the product treats handwriting as "a person must retype each name".
+**On 4 real, redacted documents (2 printed, 2 handwritten), scored by medicine names: the printed ones read 15 of 15 names. The pre-registered score showed 2 misses, both clerical errors in our own answer key (two typos and two documents' labels swapped), corrected and reported side by side. On handwriting it misread 1 name and flagged 4 lines for a person to check, which is why every handwritten line now needs a person's confirmation.** The one misread name came back "clear" on a handwritten sheet. The handwriting rule added afterwards (every line on a handwritten sheet is marked unsure and YES is refused until each name is retyped) is covered by a unit test, not by a new P8 run. On the handwritten documents the model also dropped most label medicines.
 
 ### Other Phase 3 checks
 

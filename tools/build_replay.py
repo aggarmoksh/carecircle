@@ -1,6 +1,6 @@
 """Build site/replay.html: one self-contained file (inline CSS and JS, no network calls, no keys) that replays the Thursday evening of the demo scene.
 The data is exported from the fictional seed (app/seed.py) and the message wording is rendered by the real templates (app/tmpl.py), so the replay says what the product says.
-Usage: python tools/build_replay.py   (writes site/replay.html; nothing is published)"""
+Usage: python tools/build_replay.py   (writes site/replay.html and its copy docs/replay.html; nothing is published)"""
 import json, pathlib, sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -64,4 +64,5 @@ data = dict(start="19:55", meds=MEDS, members=ms, common=common, done=done, igno
 src = (ROOT / "site" / "replay.src.html").read_text(encoding="utf-8")
 out = src.replace("/*DATA*/null", json.dumps(data, ensure_ascii=False).replace("</", "<\/"))
 (ROOT / "site" / "replay.html").write_text(out, encoding="utf-8")
+(ROOT / "docs" / "replay.html").write_text(out, encoding="utf-8")        # a copy GitHub Pages can serve from /docs
 print("site/replay.html", len(out), "bytes")
