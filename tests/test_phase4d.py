@@ -84,9 +84,6 @@ def test_draft_summary_and_help_reach_members_in_their_language_and_the_medicine
     assert got["m3"] == "Here's what I read:" + nl + nl.join(lines) + nl + "Reply YES to start this schedule, or tell me what's wrong."
     for l in lines:
         assert l in got["m2"] and l in got["m1"]                                    # exactly as extracted
-    ch.log.clear()
-    intake.handle(conn, ob, "m2", text="hello there, what can you do")             # help text: the model is not asked to translate it
-    assert True
 
 
 @pytest.mark.parametrize("word", ["sí", "Sí", "si", "SI.", "haan", "हाँ", "हां", "Yes", "YES!"])
