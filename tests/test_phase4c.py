@@ -31,7 +31,7 @@ def test_hindi_12_hour_clock_with_time_word_never_24_hour():
 
 def test_spanish_time_words_and_accents():
     assert tmpl.es_time("20:00") == "las 8 de la noche" and tmpl.es_time("08:00") == "las 8 de la mañana" and tmpl.es_time("15:00") == "las 3 de la tarde"
-    assert tmpl.es_time("13:00") == "la 1 de la tarde" and tmpl.es_time("04:00") == "las 4 de la noche"
+    assert tmpl.es_time("13:00") == "la 1 de la tarde" and tmpl.es_time("04:00") == "las 4 de la madrugada"
     n = tmpl.render("nudge", "es", meds=ONE, **dict(SLOTS, name="Sofía"))
     assert n == "Hola Sofía, ¿Nanaji ya tomó metformin de las 8 de la noche? Responde «done» o dime cuáles tomó."
     assert "tomó" in n and "Sofía" in n
@@ -43,8 +43,8 @@ def test_hindi_templates_match_the_advisors_wording():
     assert tmpl.render("organiser_missed", "hi", **SLOTS) == "दवा के डिब्बे में बुधवार शाम वाला हिस्सा अभी भरा है: वह दवा नहीं दी गई।"
     assert tmpl.render("schedule_live", "hi", **SLOTS) == "Arjun ने Nanaji की दवाओं की सूची पक्की कर दी: 4 दवाएं शुरू हो गई हैं।"
     assert tmpl.render("lab_added", "hi", **SLOTS).startswith("Kabir ने 29 अक्टूबर की लैब रिपोर्ट जोड़ी: 4 नतीजे लैब की छपी हुई रेंज से बाहर हैं।")
-    assert tmpl.render("relay_given", "es", meds=THREE, **SLOTS) == "Arjun le dio a Nanaji amlodipine, aspirin y metformin de las 8 de la noche (las 8:07 de la noche)."
-    assert tmpl.render("organiser_missed", "es", **SLOTS) == "En el pastillero, el compartimento de miércoles por la tarde sigue lleno: esa dosis no se dio."
+    assert tmpl.render("relay_given", "es", meds=THREE, **SLOTS) == "Arjun le dio a Nanaji amlodipine, aspirin y metformin de las 8 de la noche (a las 8:07 de la noche)."
+    assert tmpl.render("organiser_missed", "es", **SLOTS) == "En el pastillero, el compartimento del miércoles por la noche sigue lleno: esa dosis no se dio."
 
 
 def test_system_messages_reach_members_in_their_language_without_the_model(monkeypatch):
@@ -63,5 +63,5 @@ def test_system_messages_reach_members_in_their_language_without_the_model(monke
     intake._dose(conn, ob, "m2", "done", clock.now())
     got = dict((m, t) for m, t in ch.log)
     assert got["m2"].startswith("दर्ज हो गया: सुबह 8 बजे वाली amlodipine, aspirin और metformin दवा दी गई")
-    assert got["m1"] == "Meena le dio a Nanaji amlodipine, aspirin y metformin de las 8 de la mañana (las 8:15 de la mañana)."
+    assert got["m1"] == "Meena le dio a Nanaji amlodipine, aspirin y metformin de las 8 de la mañana (a las 8:15 de la mañana)."
     assert got["m3"] == "CareCircle: Meena gave amlodipine, aspirin, metformin 08:00."

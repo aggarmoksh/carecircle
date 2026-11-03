@@ -30,7 +30,7 @@ def hi_time(t):
 
 def es_time(t):
     h, m, hh = _hm(t)
-    part = "mañana" if 5 <= h < 12 else "tarde" if 12 <= h < 20 else "noche"
+    part = "madrugada" if h < 6 else "mañana" if h < 12 else "tarde" if h < 20 else "noche"
     return f"{'la' if hh == 1 else 'las'} {hh}{':%02d' % m if m else ''} de la {part}"
 
 
@@ -76,6 +76,16 @@ def _en(kind, s):
         return "CareCircle daily summary:"
     if kind == "logged":
         return f"Logged: {_list(meds, 'en')} {s['time']} given ({s['giver']}). Thanks."
+    if kind == "relay_skipped":
+        return f"CareCircle: {s['giver']} skipped {_list(meds, 'en')} {s['time']}."
+    if kind == "relay_unsure":
+        return f"CareCircle: {s['giver']} wasn't sure about {_list(meds, 'en')} {s['time']}."
+    if kind == "draft_header":
+        return "Here's what I read:"
+    if kind == "draft_updated":
+        return "Updated:"
+    if kind == "draft_footer":
+        return "Reply YES to start this schedule, or tell me what's wrong."
     if kind == "today_caption":
         return f"Today for {P}." + _link(None, s.get("link"))
     if kind == "board_line":
@@ -104,6 +114,16 @@ def _hi(kind, s):
         return "CareCircle का दैनिक सारांश:"
     if kind == "logged":
         return f"दर्ज हो गया: {t} वाली {meds} दवा दी गई ({s['giver']})। धन्यवाद।"
+    if kind == "relay_skipped":
+        return f"{s['giver']} ने {P} की {t} वाली {meds} दवा छोड़ दी।"
+    if kind == "relay_unsure":
+        return f"{s['giver']} को पक्का नहीं है कि {P} ने {t} वाली {meds} दवा ली या नहीं।"
+    if kind == "draft_header":
+        return "मैंने यह पढ़ा:"
+    if kind == "draft_updated":
+        return "अपडेट किया:"
+    if kind == "draft_footer":
+        return "यह सूची शुरू करने के लिए 'हाँ' या YES लिखें, या बताएं क्या गलत है।"
     if kind == "today_caption":
         return f"आज की स्थिति, {P}।" + (f" बोर्ड (वैकल्पिक): {s['link']}" if s.get("link") else "")
     if kind == "board_line":
@@ -117,13 +137,13 @@ def _es(kind, s):
     if kind == "nudge":
         return f"Hola {s['name']}, ¿{P} ya tomó {meds} de {t}? Responde «done» o dime cuáles tomó."
     if kind == "escalate":
-        return f"{s['first']} aún no ha confirmado que {P} tomó {meds} de {t}. ¿Puedes revisar y avisarme?"
+        return f"{s['first']} aún no ha confirmado que {P} haya tomado {meds} de {t}. ¿Puedes revisar y avisarme?"
     if kind == "relay_given":
-        return f"{s['giver']} le dio a {P} {meds} de {t} ({es_time(s['clock'])})."
+        return f"{s['giver']} le dio a {P} {meds} de {t} (a {es_time(s['clock'])})."
     if kind == "missed":
         return f"No consta que {P} haya tomado {meds} de {t}."
     if kind == "organiser_missed":
-        return f"En el pastillero, el compartimento de {ES_DAYS[s['day']]} por la {'mañana' if s['part'] == 'AM' else 'tarde'} sigue lleno: esa dosis no se dio."
+        return f"En el pastillero, el compartimento del {ES_DAYS[s['day']]} por la {'mañana' if s['part'] == 'AM' else 'noche'} sigue lleno: esa dosis no se dio."
     if kind == "schedule_live":
         return f"{s['giver']} confirmó la lista de medicamentos de {P}: {s['n']} medicamentos activos."
     if kind == "lab_added":
@@ -132,6 +152,16 @@ def _es(kind, s):
         return "Resumen diario de CareCircle:"
     if kind == "logged":
         return f"Registrado: {meds} de {t} ({s['giver']}). Gracias."
+    if kind == "relay_skipped":
+        return f"{s['giver']} se saltó {meds} de {t} de {P}."
+    if kind == "relay_unsure":
+        return f"Hay dudas sobre si {P} tomó {meds} de {t} ({s['giver']})."
+    if kind == "draft_header":
+        return "Esto es lo que leí:"
+    if kind == "draft_updated":
+        return "Actualizado:"
+    if kind == "draft_footer":
+        return "Responde SÍ para activar esta lista, o dime qué está mal."
     if kind == "today_caption":
         return f"Hoy, {P}." + (f" Tablero (opcional): {s['link']}" if s.get("link") else "")
     if kind == "board_line":
@@ -140,6 +170,9 @@ def _es(kind, s):
 
 
 FIXED = {  # fixed replies, written by hand in each language (never rephrased by the model)
+    "help": {"en": "I can log doses, answer questions from the care record, or save a photo of a discharge sheet, pill organiser or lab report.",
+             "hi": "मैं दवा की खुराक दर्ज कर सकता हूं, देखभाल रिकॉर्ड से सवालों के जवाब दे सकता हूं, या डिस्चार्ज शीट, पर्चे, दवा के डिब्बे या लैब रिपोर्ट की फोटो सहेज सकता हूं।",
+             "es": "Puedo registrar dosis, responder preguntas con el registro de cuidados o guardar una foto de un informe de alta, una receta, un pastillero o un análisis."},
     "medical": {"en": "I can't give medical advice. I've noted this as a question for the doctor visit. Who will ask the doctor? Reply 'I will' to take it.",
                 "hi": "मैं चिकित्सा सलाह नहीं दे सकता। इसे डॉक्टर से मिलने के लिए सवाल के रूप में लिख लिया है। डॉक्टर से कौन पूछेगा? लेने के लिए 'I will' लिखें।",
                 "es": "No puedo dar consejos médicos. Lo anoté como pregunta para la consulta con el médico. ¿Quién se lo preguntará al médico? Responde «I will» para encargarte."},
@@ -157,4 +190,4 @@ def fixed(kind, lang):
     return FIXED[kind].get(lang, FIXED[kind]["en"])
 
 
-KINDS = ["nudge", "escalate", "relay_given", "missed", "organiser_missed", "schedule_live", "lab_added", "daily_header", "logged", "today_caption", "board_line"]
+KINDS = ["nudge", "escalate", "relay_given", "missed", "organiser_missed", "schedule_live", "lab_added", "daily_header", "logged", "today_caption", "board_line", "relay_skipped", "relay_unsure", "draft_header", "draft_updated", "draft_footer"]

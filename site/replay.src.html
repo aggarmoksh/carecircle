@@ -1,13 +1,12 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light">
 <title>CareCircle: interactive replay</title>
 <meta name="description" content="Interactive replay with fictional data. The real system runs on WhatsApp.">
 <script>try{var t=new URLSearchParams(location.search).get("theme")||localStorage.getItem("cc-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <style>
 :root{--canvas:#FAF7F2;--surface:#fff;--ink:#1C2733;--muted:#5B6672;--line:#E7E1D8;--accent:#E8833A;--action:#2563EB;--within:#1F8A70;--outside:#B26B00;--outsideb:#FFF4E0;--missed:#6B5B95;--sim:#9AA3AD;--node:#8A939D;--cellb:#B8C0C8;--fill:#EFE9DF;--fillb:#CFC6B8;--bubble:#E9F5EC;--btnink:#fff;color-scheme:light}
 :root[data-theme=dark]{--canvas:#12161B;--surface:#1A2027;--ink:#EEF1F4;--muted:#A3ADB8;--line:#2A323C;--accent:#F0954A;--action:#5B8DEF;--within:#3FB68E;--outside:#E3A33B;--outsideb:#3A2A10;--missed:#9C8CD0;--sim:#7D8793;--node:#6B7682;--cellb:#4A5561;--fill:#262E37;--fillb:#3A4450;--bubble:#17352B;--btnink:#12161B;color-scheme:dark}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--canvas:#12161B;--surface:#1A2027;--ink:#EEF1F4;--muted:#A3ADB8;--line:#2A323C;--accent:#F0954A;--action:#5B8DEF;--within:#3FB68E;--outside:#E3A33B;--outsideb:#3A2A10;--missed:#9C8CD0;--sim:#7D8793;--node:#6B7682;--cellb:#4A5561;--fill:#262E37;--fillb:#3A4450;--bubble:#17352B;--btnink:#12161B;color-scheme:dark}}
 *{box-sizing:border-box}[hidden]{display:none!important}
 body{margin:0;background:var(--canvas);color:var(--ink);font:15px/22px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
@@ -142,10 +141,10 @@ $('bother').onclick=()=>{const other=branch==='done'?'ignore':'done';clearTimeou
  seq=D.common.filter(e=>!e.choice);i=0;const run=()=>{if(i>=seq.length){choose(other);return}apply(seq[i++]);timer=setTimeout(run,450)};run()};
 // ----- theme -----
 const SUN='<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',MOON='<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>';
-function isDark(){const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches}
+function isDark(){return document.documentElement.getAttribute('data-theme')==='dark'}
 function themeIcon(){$('themeic').innerHTML=isDark()?SUN:MOON;$('theme').setAttribute('aria-label',isDark()?'Switch to light mode':'Switch to dark mode')}
 $('theme').onclick=()=>{const n=isDark()?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('cc-theme',n)}catch(e){}themeIcon()};
-matchMedia('(prefers-color-scheme:dark)').addEventListener('change',themeIcon);themeIcon();
+themeIcon();
 // local clocks of the members for a given Kolkata time (computed from the data, no network)
 D.members.forEach(m=>{m.local=ist=>{const [hh,mm]=ist.split(':').map(Number);let t=hh*60+mm-330+m.utcOffsetMin;t=((t%1440)+1440)%1440;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}});
 reset();timer=setTimeout(step,900);

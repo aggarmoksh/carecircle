@@ -19,7 +19,7 @@ def test_replay_is_self_contained_labelled_and_fictional():
     for key in ("MODEL_API_KEY", "TWILIO", "token=", "sk-", "whatsapp:"):
         assert key not in html
     assert "शाम 8 बजे" in html and "las 8 de la noche" in html          # the real templates, in Hindi and Spanish
-    assert "prefers-color-scheme" in html and "prefers-reduced-motion" in html and "max-width:900px" in html
+    assert "prefers-color-scheme" not in html and "prefers-reduced-motion" in html and "max-width:900px" in html
 
 
 @pytest.mark.skipif(not cards.chrome(), reason="no Chrome on this machine")

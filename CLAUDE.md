@@ -73,3 +73,10 @@ Members have relationship, timezone and role hands_on or remote; a member is rea
 - P9 (web-search medicine-name check) FAILED its pass bar (10 of 17); the draft-summary check was not built. Code is in app/medcheck.py and probes/p9_run.py; results in outputs/p9_results.json.
 - Cast: m5 is Sofía (family friend, Madrid, remote, simulated, language es, default daily). app/lang.py has per-language hints (Hindi time words and "दवा" after a medicine name; Spanish time wording).
 - Spend cap is 8.00. After edits to board.html run `node --check` on its script.
+
+## Phase 4d decisions (feature freeze after this)
+- Theme: light always; dark only via the header toggle (localStorage in try/catch); prefers-color-scheme is ignored on the board, the replay page and the card.
+- Spanish times: madrugada 00-05:59, mañana 06-11:59, tarde 12-19:59, noche 20-23:59; "a las 8:07 de la noche"; organiser "del jueves por la noche".
+- All listed system messages and the help, draft and skipped/unsure messages are fixed templates in tmpl.py; YES also means sí, si, haan, हाँ, हां.
+- Scenes: tools/demo_reset.py --scene monday|thursday prints the filming steps (tools/scene_steps.py). monday sets every member's choice to "everything". Server for filming must run without CARECIRCLE_DRY_RUN.
+- Live card send: tools/send_card_live.py --yes (only when the user says "ready").

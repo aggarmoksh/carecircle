@@ -8,7 +8,7 @@ START=${SHOTS_START:-2026-11-05T03:01:30Z}
 sleep 7
 C="/c/Program Files/Google/Chrome/Application/chrome.exe"
 O="$(pwd -W)/outputs"
-for T in light dark; do
+for T in ${THEMES:-light dark}; do
   U="http://127.0.0.1:8001/board?token=shotstoken&theme=$T&live=0"
   "$C" --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=1440,900 --screenshot="$O/board_p4c_1440x900_$T.png" "$U" >/dev/null 2>&1
   "$C" --headless=new --disable-gpu --hide-scrollbars --virtual-time-budget=6000 --window-size=1440,${FULLH:-3300} --screenshot="$O/board_p4c_full_$T.png" "$U" >/dev/null 2>&1

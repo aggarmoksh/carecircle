@@ -29,6 +29,17 @@ def reset(conn):
     conn.commit()
 
 
+def scene_monday(conn, on=None):
+    """Demo scene for filming: a fresh circle, no schedule yet, every member's update choice set to 'everything' (so each update reaches a phone at once),
+    patient clock Monday 07:55. Fictional data only. Returns the clock target."""
+    from datetime import timedelta
+    reset(conn)
+    conn.execute("UPDATE members SET relay_pref='everything'")
+    conn.commit()
+    today = on or datetime.now(record.patient_tz(conn)).date()
+    return start_time(conn, today + timedelta(days=(0 - today.weekday()) % 7))
+
+
 def scene_thursday(conn, on=None):
     """Demo scene: Thursday 07:55 patient-local. d1 was confirmed by Meena on Monday; Monday, Tuesday and Wednesday 08:00 doses were confirmed by
     various members; Wednesday 20:00 doses were never confirmed (recorded as missed); the lab report L2 was confirmed by Kabir. Fictional data only.

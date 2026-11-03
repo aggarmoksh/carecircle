@@ -112,6 +112,6 @@ def test_live_stream_pushes_state_first(client):
 
 def test_board_page_wires_the_doctor_link_theme_toggle_and_stream():
     html = open(pathlib.Path(board.__file__).with_name("board.html"), encoding="utf-8").read()
-    for needle in ("'/doctor?token='", "new EventSource('/api/stream?token='", "localStorage.setItem('cc-theme'", "prefers-color-scheme", "prefers-reduced-motion", "safe-area-inset"):
+    for needle in ("'/doctor?token='", "new EventSource('/api/stream?token='", "localStorage.setItem('cc-theme'", "prefers-reduced-motion", "safe-area-inset"):
         assert needle in html, needle
     assert html.count("try{localStorage") + html.count("try{localStorage.setItem") >= 1

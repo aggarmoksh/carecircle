@@ -12,8 +12,9 @@ INTENTS = ["dose_update", "record_question", "correction", "volunteer", "medical
 BOARD_RX = re.compile(r"(board|बोर्ड|tablero)[.!]?", re.I)
 STOP_RX = re.compile(r"\s*stop\s*[.!]*\s*", re.I)
 YES = {"yes", "y", "yes please", "yeah", "yep", "yes start", "yes thanks"}
+YES_I18N = {"sí", "si", "haan", "हाँ", "हां"}        # Spanish and Hindi ways to say yes (the Latin-letter filter below would strip the accent and the script)
 TYPE_WORDS = [("discharge_sheet", r"discharge"), ("prescription", r"prescri"), ("pill_organiser", r"organi[sz]er|pill ?box|pill ?organi"), ("lab_report", r"\blab\b|report|blood test|results?")]
-HELP = "I can log doses, answer questions from the care record, or save a photo of a discharge sheet, pill organiser or lab report."
+HELP = tmpl.FIXED["help"]["en"]
 
 INTENT_SCHEMA = {"name": "intent", "schema": {"type": "object", "additionalProperties": False, "required": ["intent"],
                  "properties": {"intent": {"type": "string", "enum": INTENTS}}}}
@@ -73,6 +74,13 @@ def _send(ob, mid, text, reason, sender_text="", free=False):
 
 def _lang(conn, mid):
     return (record.member(conn, mid) or {}).get("language") or "en"
+
+
+def _draft_msg(conn, ob, mid, head_kind, lines, extra, reason, sender_text=""):
+    """Draft schedule for confirmation: header and footer are fixed templates in the member's language; the medicine lines stay exactly as extracted."""
+    code, nl = _lang(conn, mid), chr(10)
+    mk = lambda c: tmpl.render(head_kind, c) + nl + nl.join(lines) + extra + nl + tmpl.render("draft_footer", c)
+    return ob.send(mid, mk(code), reason, sender_text, lang_used=code, english=mk("en"))
 
 
 def _fixed(conn, ob, mid, kind, reason, sender_text=""):
@@ -137,7 +145,7 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
         if record.unsure_lines(conn):
             extra += "\nLines marked ? are hard to read" + (" (this sheet has handwriting, so every name needs your check)" if hand else "") + ". Please type the correct name for each (for example 'line 2 is metformin') before I can start."
         audit(conn, "draft_created", mid, {"doc": doc, "lines": len(summ)}, "extraction saved as draft; nothing live until a member says YES")
-        _send(ob, mid, "Here's what I read:\n" + "\n".join(summ) + extra + "\nReply YES to start this schedule, or tell me what's wrong.", "draft summary sent for confirmation")
+        _draft_msg(conn, ob, mid, "draft_header", summ, extra, "draft summary sent for confirmation")
     elif typ == "pill_organiser":
         states = vision.organiser_states(prepped, doc)
         # Phase 3 decision (P3-real, 8 photos): Spark alone read 14/14 on all 8, SAM mapped all 14 compartments on 2 of 8, so SAM overlays are dropped
@@ -186,7 +194,8 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
     else:
         conn.execute("UPDATE documents SET status='stored' WHERE id=?", (doc,))
         conn.commit()
-        _send(ob, mid, "Saved. " + HELP, "other image")
+        code = _lang(conn, mid)
+        ob.send(mid, {"hi": "सहेज लिया। ", "es": "Guardado. "}.get(code, "Saved. ") + tmpl.fixed("help", code), "other image", lang_used=code, english="Saved. " + HELP)
 
 
 # ---------------- text ----------------
@@ -196,6 +205,7 @@ PAST_ACTION = re.compile(r"\b(took|taken|gave|given|de di|dedi|diti|diya|le li|l
 def _text(conn, ob, mid, text, via="text"):
     now = clock.now()
     low = re.sub(r"[^a-z ]", "", text.lower()).strip()
+    yes = low in YES or text.strip(" .!¡").lower() in YES_I18N
     # pending image-type question
     pend = conn.execute("SELECT * FROM documents WHERE sender=? AND status='awaiting_type' ORDER BY id DESC LIMIT 1", (mid,)).fetchone()
     if pend:
@@ -208,7 +218,7 @@ def _text(conn, ob, mid, text, via="text"):
     has_draft = bool(record.lines(conn, "draft"))
     lab_draft = labs.draft(conn)
     newer_sched = has_draft and (record.lines(conn, "draft")[0]["source_doc_id"] or 0) > (lab_draft["doc_id"] or 0) if lab_draft else False
-    if lab_draft and low in YES and not newer_sched:
+    if lab_draft and yes and not newer_sched:
         rep = labs.confirm_draft(conn, mid, record.iso(now))
         oor = labs.out_of_range(rep["tests"])
         when = labs.pretty_date(rep["report_date"])
@@ -217,12 +227,12 @@ def _text(conn, ob, mid, text, via="text"):
         _send(ob, mid, f"Saved. The lab report from {when} is now in the care record.", "YES received for lab report")
         ob.relay_t("lab_added", dict(member=nm(conn, mid), date=rep["report_date"], n=len(oor), link=True), [mid], "state change: lab report added")
         return "yes_lab"
-    if has_draft and low in YES and record.unsure_lines(conn):
+    if has_draft and yes and record.unsure_lines(conn):
         nums = record.unsure_lines(conn)
         audit(conn, "yes_blocked", mid, f"unsure lines {nums}", "YES refused: a line is marked ? and needs the correct name")
         _send(ob, mid, f"Not started yet: line {', '.join(map(str, nums))} {'is' if len(nums) == 1 else 'are'} marked ?. Please type the correct name (for example 'line {nums[0]} is metformin'), or tell me to remove it.", "YES blocked by unsure line")
         return "yes_blocked"
-    if has_draft and low in YES:
+    if has_draft and yes:
         n = record.confirm_drafts(conn, mid, record.iso(now))
         audit(conn, "schedule_confirmed", mid, {"lines": n}, "member said YES")
         left = len(record.lines(conn, "draft"))
@@ -292,6 +302,8 @@ def _dose(conn, ob, mid, text, now):
     if r["action"] == "given" and r["actor"] != "patient":
         ob.relay_t("relay_given", dict(giver=who, patient=config.PATIENT_NAME, meds=[x.rsplit("_", 1)[0] for x in chosen], time=chosen[0].rsplit("_", 1)[1],
                                        clock=now.astimezone(record.patient_tz(conn)).strftime("%H:%M")), [mid], "state change: dose event")
+    elif r["action"] in ("skipped", "unsure") and r["actor"] != "patient":
+        ob.relay_t("relay_" + r["action"], dict(giver=who, patient=config.PATIENT_NAME, meds=[x.rsplit("_", 1)[0] for x in chosen], time=chosen[0].rsplit("_", 1)[1]), [mid], "state change: dose event")
     else:
         ob.relay("CareCircle: " + verb_line, [mid], "state change: dose event")
 
@@ -330,7 +342,7 @@ def _correction(conn, ob, mid, text, now):
     if not applied:
         _send(ob, mid, "I couldn't tell what to change. You can say, for example, 'line 2 should be 08:00'.", "correction not understood", text)
         return
-    _send(ob, mid, "Updated:\n" + "\n".join(record.draft_summary(conn)) + "\nReply YES to start this schedule, or tell me what's wrong.", "draft re-summarised after correction", text)
+    _draft_msg(conn, ob, mid, "draft_updated", record.draft_summary(conn), "", "draft re-summarised after correction", text)
 
 
 def _volunteer(conn, ob, mid, text, now):
@@ -376,4 +388,4 @@ def _relay_choice(conn, ob, mid, text, now):
 
 
 def _other(conn, ob, mid, text, now):
-    _send(ob, mid, HELP, "other message: help text", text)
+    _fixed(conn, ob, mid, "help", "other message: help text", text)
