@@ -165,7 +165,7 @@ def test_language_check_keeps_names_and_numbers_and_falls_back_to_english(monkey
     assert not lang.faithful(conn, en, "दर्ज किया: metformin ०८:०० दी गई")      # Devanagari digits are rejected
     for reply, expect in ((good, good), (bad_num, en), (bad_name, en)):
         monkeypatch.setattr(llm, "spark_json", lambda ph, lb, m, sc, r=reply: ({"text": r}, 0, 0))
-        assert ob.send("m2", en, "test") == expect
+        assert ob.send("m2", en, "test", free=True) == expect
     assert sum(1 for r in conn.execute("SELECT kind FROM audit_log WHERE kind='lang_fallback'")) == 2
     ob.sent.clear()
-    assert ob.send("m3", en, "test") == en                                    # an English member never reaches the model
+    assert ob.send("m3", en, "test", free=True) == en                                    # an English member never reaches the model

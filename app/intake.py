@@ -2,7 +2,7 @@
 image -> classify -> (discharge/prescription | organiser | lab report | ask) ; voice -> ffmpeg + transcribe -> text path ;
 text -> intent {dose_update, record_question, correction, volunteer, medical_question, urgent_symptom, other}."""
 import json, pathlib, re
-from . import config, record, vision, voice, llm, labs, qa
+from . import config, record, vision, voice, llm, labs, qa, tmpl
 from .clock import clock
 from .db import audit
 from .outbox import FIXED_MEDICAL, FIXED_URGENT, FIXED_LAB
@@ -66,8 +66,18 @@ def nm(conn, mid):
     return m["name"] if m else mid
 
 
-def _send(ob, mid, text, reason, sender_text=""):
-    return ob.send(mid, text, reason, sender_text)
+def _send(ob, mid, text, reason, sender_text="", free=False):
+    return ob.send(mid, text, reason, sender_text, free=free)
+
+
+def _lang(conn, mid):
+    return (record.member(conn, mid) or {}).get("language") or "en"
+
+
+def _fixed(conn, ob, mid, kind, reason, sender_text=""):
+    """A fixed reply written by hand in the member's language."""
+    code = _lang(conn, mid)
+    return ob.send(mid, tmpl.fixed(kind, code), reason, sender_text, lang_used=code, english=tmpl.fixed(kind, "en"))
 
 
 def handle(conn, ob, mid, text=None, media=None):
@@ -140,7 +150,10 @@ def _process_doc(conn, ob, mid, doc, typ, prepped, now):
         for comp, sentence in diffs:
             audit(conn, "organiser_disagreement", mid, f"{comp} {states[comp]}, {sentence.split('; ')[-1] if '; ' in sentence else sentence}", "organiser vs record")
         if diffs:
-            _send(ob, mid, diffs[0][1] + "." if len(diffs) == 1 else "Compared with the record this week:\n" + "\n".join("- " + s for _, s in diffs), "organiser disagreements with the record")
+            code = _lang(conn, mid)
+            line = lambda c, s: tmpl.render("organiser_missed", code, day=c.split("_")[0], part=c.split("_")[1]) if s.endswith("that dose wasn't given") else s
+            body = line(*diffs[0]) if len(diffs) == 1 else "Compared with the record this week:" + chr(10) + chr(10).join("- " + line(c, s) for c, s in diffs)
+            ob.send(mid, body, "organiser disagreements with the record", lang_used=code if any(ord(ch) > 127 for ch in body) else "en", english=None)
         else:
             audit(conn, "organiser_ok", mid, f"doc {doc}", "organiser agrees with the record")
             _send(ob, mid, "The organiser agrees with the record for this week so far.", "organiser matches record")
@@ -201,7 +214,7 @@ def _text(conn, ob, mid, text, via="text"):
         record.add_task(conn, f"Discuss the lab report from {when} with the doctor", None, "lab report", record.iso(now))
         audit(conn, "lab_confirmed", mid, {"report": rep["id"], "date": rep["report_date"], "outside_range": len(oor)}, "member said YES; lab values are live")
         _send(ob, mid, f"Saved. The lab report from {when} is now in the care record.", "YES received for lab report")
-        ob.relay(f"{nm(conn, mid)} added a lab report from {when}: {len(oor)} values are outside the lab's printed range. See the board.", [mid], "state change: lab report added")
+        ob.relay_t("lab_added", dict(member=nm(conn, mid), date=rep["report_date"], n=len(oor), link=True), [mid], "state change: lab report added")
         return "yes_lab"
     if has_draft and low in YES and record.unsure_lines(conn):
         nums = record.unsure_lines(conn)
@@ -213,7 +226,7 @@ def _text(conn, ob, mid, text, via="text"):
         audit(conn, "schedule_confirmed", mid, {"lines": n}, "member said YES")
         left = len(record.lines(conn, "draft"))
         _send(ob, mid, f"Schedule started: {n} medicine(s) are now live." + (f" {left} line(s) still need a time." if left else "") + " I'll check in on each dose.", "YES received")
-        ob.relay(f"{nm(conn, mid)} confirmed the schedule for {config.PATIENT_NAME}: {n} medicine(s) are now live.", [mid], "state change: schedule confirmed")
+        ob.relay_t("schedule_live", dict(giver=nm(conn, mid), patient=config.PATIENT_NAME, n=n), [mid], "state change: schedule confirmed")
         return "yes"
     if STOP_RX.fullmatch(text):
         _set_pref(conn, ob, mid, "stop", text)
@@ -265,9 +278,18 @@ def _dose(conn, ob, mid, text, now):
     label = (record.med_names(chosen) + " " + chosen[0].rsplit("_", 1)[1]) if len(chosen) > 1 else chosen[0].replace("_", " ")
     verb = {"given": "gave", "skipped": "skipped", "unsure": "wasn't sure about"}[r["action"]]
     pre = "late: " if typ == "late_confirmed" else ""
-    _send(ob, mid, f"Logged: {pre}{label} {r['action']} ({who}). Thanks.", "dose update logged", text)
+    if r["action"] == "given" and typ == "confirmed":
+        code = _lang(conn, mid)
+        slots = dict(giver=who, meds=[x.rsplit("_", 1)[0] for x in chosen], time=chosen[0].rsplit("_", 1)[1])
+        ob.send(mid, tmpl.render("logged", code, **slots), "dose update logged", text, lang_used=code, english=tmpl.render("logged", "en", **slots))
+    else:
+        _send(ob, mid, f"Logged: {pre}{label} {r['action']} ({who}). Thanks.", "dose update logged", text)
     verb_line = f"{who} {verb} {label}." if r["actor"] != "patient" else f"{config.PATIENT_NAME} took {label} himself." if r["action"] == "given" else f"{label}: {r['action']}."
-    ob.relay("CareCircle: " + verb_line, [mid], "state change: dose event")
+    if r["action"] == "given" and r["actor"] != "patient":
+        ob.relay_t("relay_given", dict(giver=who, patient=config.PATIENT_NAME, meds=[x.rsplit("_", 1)[0] for x in chosen], time=chosen[0].rsplit("_", 1)[1],
+                                       clock=now.astimezone(record.patient_tz(conn)).strftime("%H:%M")), [mid], "state change: dose event")
+    else:
+        ob.relay("CareCircle: " + verb_line, [mid], "state change: dose event")
 
 
 def _qa(conn, ob, mid, text, now):
@@ -276,7 +298,7 @@ def _qa(conn, ob, mid, text, now):
     except Exception as e:  # never leave the member without a reply; never guess
         ans, info = qa.NOT_FOUND, {"error": type(e).__name__, "source": "fixed: error"}
     audit(conn, "record_answer", mid, {"q": text, "a": ans, "query": info.get("mapping"), "facts": info.get("facts"), "source": info.get("source")}, "answered by code from the record; Spark only phrased the facts")
-    _send(ob, mid, ans, "record question answered from the record", text)
+    _send(ob, mid, ans, "record question answered from the record", text, free=True)
 
 
 def _correction(conn, ob, mid, text, now):
@@ -320,12 +342,12 @@ def _volunteer(conn, ob, mid, text, now):
 def _medical(conn, ob, mid, text, now):
     record.add_task(conn, f"Ask the doctor: {text}", None, "medical question", record.iso(now))
     audit(conn, "medical_question", mid, "fixed reply; question saved as a task for the doctor visit", "no advice given")
-    _send(ob, mid, FIXED_MEDICAL, "medical question: fixed reply")
+    _fixed(conn, ob, mid, "medical", "medical question: fixed reply")
 
 
 def _urgent(conn, ob, mid, text, now):
     audit(conn, "urgent_symptom", mid, "fixed urgent reply and immediate alert to awake real members", "urgent symptom reported")
-    _send(ob, mid, FIXED_URGENT, "urgent symptom: fixed reply")
+    _fixed(conn, ob, mid, "urgent", "urgent symptom: fixed reply")
     for m in record.members(conn):
         if m["id"] == mid:
             continue

@@ -70,8 +70,8 @@ def tick(conn, outbox):
                 if not _logged(conn, slot0, d, m["id"], why):
                     audit(conn, "escalation_skip", m["id"], f"{slot0} {d}: {why}", "member skipped in escalation ladder")
                 continue
-            text, reason, typ = _step_text(ms, m, gslots, t, k, contacted, slot0)
-            res = outbox.send(m["id"], text, reason)
+            kind, slots, reason, typ = _step(ms, m, gslots, t, k, contacted)
+            res = outbox.send_t(m["id"], kind, reason, **slots)
             for s in gslots:
                 record.add_event(conn, s, d, typ, m["id"], None, None, f"step {k + 1}" + ("" if res else " (send skipped)"), record.iso(now))
             sent = True
@@ -84,28 +84,18 @@ def tick(conn, outbox):
             record.add_event(conn, s, d, "missed", None, None, None, "ladder exhausted" if exhausted else "next dose of the same medicine fell due", record.iso(now))
             audit(conn, "dose_missed", None, f"{s} {d}", "ladder exhausted, or the next dose of the same medicine fell due")
         if gone:   # one alert for the doses that went missed together
-            outbox.relay(f"CareCircle: {record.med_names(gone)} {t} for {config.PATIENT_NAME} is recorded as missed.", [], "state change: dose missed", kind="alert")
+            outbox.relay_t("missed", dict(patient=config.PATIENT_NAME, meds=[x.rsplit("_", 1)[0] for x in gone], time=t), [], "state change: dose missed", kind="alert")
         elif not conn.execute("SELECT 1 FROM audit_log WHERE kind='escalation_hold' AND detail=?", (f"{slot0} {d} step {k + 1}",)).fetchone():
             audit(conn, "escalation_hold", None, f"{slot0} {d} step {k + 1}", "nobody awake or reachable now; holding and retrying")
     settle_missed(conn, now)
 
 
-def _step_text(ms, m, gslots, t, k, contacted, slot0):
-    """One message per person per dose time. A single medicine keeps the short wording; several are named in one question."""
-    P = config.PATIENT_NAME
-    if len(gslots) == 1:
-        lab = f"{slot0.rsplit('_', 1)[0]} {t}"
-        if k == 0:
-            return (f"CareCircle: {lab} for {P} isn't confirmed yet. If it has been given, reply 'done' or send a voice note.",
-                    f"nudge: {slot0} past due + grace, {m['id']} on duty/first reachable", "nudged")
-        return (f"CareCircle: {ms[contacted[0]]['name']} hasn't confirmed {lab} for {P} yet. Can you check and tell me?",
-                f"escalate: {slot0} still unconfirmed after {k} step(s), next reachable member", "escalated")
-    names, when = record.med_names(gslots), record.clock12(t)
+def _step(ms, m, gslots, t, k, contacted):
+    """-> (template kind, slots, reason, event type). One message per person per dose time; the wording is a fixed template in the member's language."""
+    meds = [x.rsplit("_", 1)[0] for x in gslots]
     if k == 0:
-        return (f"Hi {m['name']}, has {P} had his {when} medicines: {names}? Reply done, or tell me which ones.",
-                f"nudge: {len(gslots)} doses at {t} past due + grace, {m['id']} on duty/first reachable", "nudged")
-    return (f"CareCircle: {ms[contacted[0]]['name']} hasn't confirmed the {when} medicines for {P} yet ({names}). Can you check and tell me?",
-            f"escalate: {len(gslots)} doses at {t} still unconfirmed after {k} step(s), next reachable member", "escalated")
+        return "nudge", dict(name=m["name"], patient=config.PATIENT_NAME, meds=meds, time=t), f"nudge: {len(gslots)} dose(s) at {t} past due + grace, {m['id']} on duty/first reachable" if len(gslots) > 1 else f"nudge: {gslots[0]} past due + grace, {m['id']} on duty/first reachable", "nudged"
+    return "escalate", dict(first=ms[contacted[0]]["name"], patient=config.PATIENT_NAME, meds=meds, time=t), f"escalate: {gslots[0] if len(gslots) == 1 else str(len(gslots)) + ' doses at ' + t} still unconfirmed after {k} step(s), next reachable member", "escalated"
 
 
 def settle_missed(conn, now, days=14):

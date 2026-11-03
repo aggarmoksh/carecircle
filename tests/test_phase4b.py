@@ -114,16 +114,11 @@ def test_sofia_is_a_remote_simulated_spanish_member_and_her_update_is_shown_in_s
     conn.execute("UPDATE members SET language='es', tz='Europe/Madrid' WHERE id='m5'")
     conn.commit()
     seed_d1(conn, confirmed_at="2026-11-02T00:00:00Z")
-    es = "CareCircle: metformin 08:00 para Nanaji está registrada como omitida."
-    monkeypatch.setattr(llm, "spark_json", lambda ph, lb, m, sc: ({"text": es}, 0, 0))
-    ob.relay("CareCircle: metformin 08:00 for Nanaji is recorded as missed.", [], "state change: dose missed", kind="alert")
+    es = "No consta que Nanaji haya tomado metformin de las 8 de la mañana."
+    monkeypatch.setattr(llm, "spark_json", lambda *a, **k: (_ for _ in ()).throw(AssertionError("system messages are fixed templates: the model must not be called")))
+    ob.relay_t("missed", dict(patient="Nanaji", meds=["metformin"], time="08:00"), [], "state change: dose missed", kind="alert")
     assert ("m5", es) in ch.log
     feed = board.state(conn, clock.now())["audit"]
     e = [a for a in feed if a["kind"] == "outbound" and a["actor"] == "m5"][0]
     assert e["text"].startswith("CareCircle messaged Sofía") and e["text"].endswith("in Spanish")
     assert es in e["detail"] and "English original: CareCircle: metformin 08:00" in e["detail"]
-    # a spanish text that changes a name or a number is not sent; the English text goes instead
-    ch.log.clear()
-    monkeypatch.setattr(llm, "spark_json", lambda ph, lb, m, sc: ({"text": "CareCircle: metformin 09:00 para Nanaji está omitida."}, 0, 0))
-    ob.send("m5", "CareCircle: metformin 08:00 for Nanaji is recorded as missed.", "test")
-    assert ch.log == [("m5", "CareCircle: metformin 08:00 for Nanaji is recorded as missed.")]
