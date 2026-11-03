@@ -1,1 +1,4 @@
 # Deferred until after Nov 4
+
+## Medicine-name check against public listings (P9): dropped
+Tried in Phase 4b with Muse Spark web search (Responses API, web_search tool, $2.50 per 1,000 searches) plus a code check of the cited page. Result on the pre-registered list: 10 of 17 real names found with a valid source (need 15), 0 of 5 fakes and 0 of 2 wrong strengths accepted. Most misses were cited pages that returned HTTP 404. Under the kill rule it is dropped for now. If revisited: let the search return a listing page only from a fixed set of sites, fetch the page in code, and treat anything unverified as "please check the name". Never suggest an alternative name; never judge a dose. Code and results are kept (app/medcheck.py, probes/p9_run.py, outputs/p9_results.json) but nothing calls them.

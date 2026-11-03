@@ -83,3 +83,11 @@ On a phone: The Circle shrinks to a horizontal strip of member chips; Now comes 
   - Relay: "Meena gave Nanaji his 8 AM metformin (07:58)."
   - Missed: "Wednesday PM is still full in the organiser: that dose wasn't given."
 - **No AI talk.** Never say "AI", "model" or "I think". CareCircle speaks as a helpful coordinator, and the audit log shows exactly what it did.
+
+## v2 (Phase 4c addendum)
+- Dark tokens: canvas #12161B, surface #1A2027, ink #EEF1F4, ink-muted #A3ADB8, line #2A323C, accent #F0954A, action #5B8DEF, within #3FB68E, outside #E3A33B on #3A2A10, missed #9C8CD0. Same contrast rules (AA).
+- Phone first (390 x 844 is the reference): sticky top bar (patient name, local time, Now chip, theme toggle); The Circle stays a real circle on phones (300 px, names shortened to first name, tap a member to open a bottom sheet with details); Now card next; Today becomes a vertical time rail with dose cards; lab values become cards with full-width range bars; everything else stacks; 16 px side padding, 44 px touch targets, safe-area insets, no horizontal page scroll.
+- More graphic, less text: a 7-day adherence ring per medicine (confirmed / due, with the number in the middle); the Today rail with filled, hollow and crossed dose markers; the ladder drawn as arcs on The Circle; text only where a graphic can't say it.
+- Motion: 200 ms ease-out for state changes, 600 ms once for a new ladder arc, new activity rows slide in by 8 px; nothing loops; prefers-reduced-motion turns all of it off.
+- Today card (1080 x 1350): The Circle on top, today's doses as a list of markers below, the patient's name and date, the "CareCircle" wordmark; readable as a WhatsApp image on a phone without zooming.
+- The board is optional: each WhatsApp message that links to it says "Board (optional): {link}".

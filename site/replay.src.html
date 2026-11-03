@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="color-scheme" content="light dark">
+<title>CareCircle: interactive replay</title>
+<meta name="description" content="Interactive replay with fictional data. The real system runs on WhatsApp.">
+<script>try{var t=new URLSearchParams(location.search).get("theme")||localStorage.getItem("cc-theme");if(t==="dark"||t==="light")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+<style>
+:root{--canvas:#FAF7F2;--surface:#fff;--ink:#1C2733;--muted:#5B6672;--line:#E7E1D8;--accent:#E8833A;--action:#2563EB;--within:#1F8A70;--outside:#B26B00;--outsideb:#FFF4E0;--missed:#6B5B95;--sim:#9AA3AD;--node:#8A939D;--cellb:#B8C0C8;--fill:#EFE9DF;--fillb:#CFC6B8;--bubble:#E9F5EC;--btnink:#fff;color-scheme:light}
+:root[data-theme=dark]{--canvas:#12161B;--surface:#1A2027;--ink:#EEF1F4;--muted:#A3ADB8;--line:#2A323C;--accent:#F0954A;--action:#5B8DEF;--within:#3FB68E;--outside:#E3A33B;--outsideb:#3A2A10;--missed:#9C8CD0;--sim:#7D8793;--node:#6B7682;--cellb:#4A5561;--fill:#262E37;--fillb:#3A4450;--bubble:#17352B;--btnink:#12161B;color-scheme:dark}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--canvas:#12161B;--surface:#1A2027;--ink:#EEF1F4;--muted:#A3ADB8;--line:#2A323C;--accent:#F0954A;--action:#5B8DEF;--within:#3FB68E;--outside:#E3A33B;--outsideb:#3A2A10;--missed:#9C8CD0;--sim:#7D8793;--node:#6B7682;--cellb:#4A5561;--fill:#262E37;--fillb:#3A4450;--bubble:#17352B;--btnink:#12161B;color-scheme:dark}}
+*{box-sizing:border-box}[hidden]{display:none!important}
+body{margin:0;background:var(--canvas);color:var(--ink);font:15px/22px system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.banner{background:var(--outsideb);color:var(--ink);border-bottom:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-left));font-size:14px;line-height:20px;text-align:center}
+.banner b{font-weight:600}
+.bar{display:flex;align-items:center;gap:12px;max-width:1280px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left))}
+.brand{font-weight:700;font-size:20px}.brand i{color:var(--accent);font-style:normal}.sp{flex:1}
+.clock{color:var(--muted);font-size:14px}.clock b{color:var(--ink)}
+button{font:inherit;cursor:pointer}
+.iconbtn{width:44px;height:44px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);display:inline-flex;align-items:center;justify-content:center}
+.iconbtn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.btn{min-height:44px;padding:8px 20px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:600}
+.btn.pri{background:var(--action);border-color:var(--action);color:var(--btnink)}
+main{max-width:1280px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left)) calc(32px + env(safe-area-inset-bottom));display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;min-width:0}
+.card h2{margin:0 0 12px;font-size:18px;line-height:26px}
+.wide{grid-column:1/-1}
+.eyebrow{color:var(--muted);font-size:13px}
+.head{font-size:26px;line-height:32px;font-weight:600;margin:2px 0 10px;letter-spacing:-.01em}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:2px 10px;border-radius:999px;font-size:13px;line-height:18px;font-weight:600;border:1px solid var(--line);background:var(--surface);transition:all .2s ease-out}
+.chip.within{color:var(--within)}.chip.out{color:var(--outside);background:var(--outsideb)}.chip.missed{color:var(--missed)}
+.doses{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.dose{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:52px}
+.dot{flex:0 0 26px;height:26px;border-radius:50%;border:2px solid var(--cellb);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--muted);transition:all .2s ease-out}
+.dot.given{background:var(--within);border-color:var(--within);color:#fff}.dot.due,.dot.overdue{border-color:var(--outside);color:var(--outside);background:var(--outsideb)}
+.dose small{display:block;color:var(--muted);font-size:13px;line-height:18px}
+svg.circle{width:100%;max-width:440px;height:auto;display:block;margin:0 auto}
+.ring{fill:none;stroke:var(--line);stroke-width:1}
+.n{fill:var(--surface);stroke:var(--node);stroke-width:1.6;transition:stroke .2s ease-out}.node.sim .n{stroke:var(--sim);stroke-dasharray:4 3}.node.hot .n{stroke:var(--accent);stroke-width:3}.node.skip{opacity:.55}
+.nm{font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}.sub{font-size:11px;fill:var(--muted);text-anchor:middle}.ini{font-size:14px;font-weight:600;fill:var(--ink);text-anchor:middle}
+.pn{font-size:13px;font-weight:600;fill:var(--ink);text-anchor:middle}.pc{fill:var(--canvas);stroke:var(--line)}
+.arc{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-linecap:round}.arc.anim{stroke-dasharray:400;stroke-dashoffset:400;animation:arc .6s ease-out forwards}.arc.fade{opacity:0;transition:opacity .4s ease-out}
+@keyframes arc{to{stroke-dashoffset:0}}
+.log{list-style:none;margin:0;padding:0}.log li{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--line)}.log li:first-child{border:0}
+.log time{font-weight:600;color:var(--muted)}.log li.new,.msg.new{animation:slide .2s ease-out}
+@keyframes slide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.msgs{display:flex;flex-direction:column;gap:10px;max-height:420px;overflow:auto}
+.msg{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface)}
+.msg .who{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.msg.out{background:var(--bubble)}.msg .en{font-size:13px;color:var(--muted);margin-top:6px}
+.tag{font-size:11px;font-weight:700;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted)}
+.choice{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}
+.org{display:grid;grid-template-columns:36px repeat(7,1fr);gap:4px;font-size:12px;max-width:420px}.org .h{text-align:center;color:var(--muted);line-height:18px}
+.cell{height:32px;border-radius:8px;border:1.5px solid var(--cellb);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}.cell.full{background:var(--fill);border-color:var(--fillb)}.cell.mis{outline:2px solid var(--outside);outline-offset:1px;border-color:var(--outside);color:var(--outside);font-weight:700}
+.mut{color:var(--muted)}
+@media(max-width:900px){main{grid-template-columns:1fr}.head{font-size:22px;line-height:28px}.clock{display:none}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.arc.anim{stroke-dashoffset:0}}
+</style></head>
+<body>
+<div class="banner"><b>Interactive replay with fictional data.</b> The real system runs on WhatsApp: see the video.</div>
+<div class="bar"><div class="brand">CareCircle<i>.</i></div><div class="clock" id="clock"></div><div class="sp"></div>
+ <button class="iconbtn" id="theme" type="button" aria-label="Switch between light and dark"><svg viewBox="0 0 24 24" id="themeic"></svg></button></div>
+<main>
+ <section class="card"><h2>The circle</h2><div id="circle"></div></section>
+ <section class="card"><div class="eyebrow">Now</div><div class="head" id="head"></div><div id="chip"></div><div class="doses" id="doses"></div>
+  <div class="choice" id="choice" hidden><button class="btn pri" type="button" id="bdone">Reply done as Meena</button><button class="btn" type="button" id="bign">Ignore</button></div>
+  <div class="choice" id="again" hidden><button class="btn pri" type="button" id="brestart">Play again</button><button class="btn" type="button" id="bother">Try the other choice</button></div>
+  <div class="mut" id="note" style="margin-top:12px" aria-live="polite"></div></section>
+ <section class="card"><h2>Messages sent</h2><div class="msgs" id="msgs" aria-live="polite"></div></section>
+ <section class="card"><h2>What happened</h2><ul class="log" id="log"></ul><div id="orgwrap" hidden style="margin-top:16px"><div class="eyebrow" style="margin-bottom:8px">Pill organiser photo</div><div class="org" id="org"></div></div></section>
+</main>
+<script>
+const D=/*DATA*/null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function h(tag,attrs,...kids){const e=document.createElement(tag);for(const k in(attrs||{})){if(k==='class')e.className=attrs[k];else e.setAttribute(k,attrs[k])}for(const c of kids.flat()){if(c==null)continue;e.append(c.nodeType?c:document.createTextNode(String(c)))}return e}
+const M=Object.fromEntries(D.members.map(m=>[m.id,m]));
+const Q=new URLSearchParams(location.search),FAST=Q.get('fast')==='1';
+let st,timer=null,branch=null,seq=[],i=0,lastArc='';
+function reset(){st={clock:D.start,status:'upcoming',doneBy:null,hot:[],skip:{},asked:[],msgs:[],log:[],org:false,note:''};lastArc='';seq=D.common.slice();i=0;branch=null;
+ $('choice').hidden=true;$('again').hidden=true;$('orgwrap').hidden=true;fill($('msgs'));fill($('log'));draw(true)}
+function fill(el,...k){el.replaceChildren(...k.flat())}
+// ----- drawing -----
+function circle(){
+ const W=400,cx=200,cy=205,R={hands_on:70,remote:128},pos={};
+ for(const role of['hands_on','remote']){const g=D.members.filter(m=>(m.role==='hands_on')===(role==='hands_on')),off=role==='hands_on'?-60:-100;
+  g.forEach((m,k)=>{const a=(off+k*360/g.length)*Math.PI/180;pos[m.id]=[cx+R[role]*Math.cos(a),cy+R[role]*Math.sin(a)]})}
+ let o='<svg class="circle" viewBox="0 0 400 410" role="img" aria-label="The circle: Nanaji at the centre, nearby members on the inner ring, members far away on the outer ring"><circle class="ring" cx="200" cy="205" r="70"/><circle class="ring" cx="200" cy="205" r="128"/>';
+ const key=st.asked.join(',');
+ st.asked.forEach((id,k)=>{const [x,y]=pos[id],mx=(cx+x)/2+(y-cy)*.18,my=(cy+y)/2-(x-cx)*.18,last=k===st.asked.length-1&&lastArc!==key&&st.status!=='given';
+  o+='<path class="arc'+(last?' anim':'')+(st.status==='given'?' fade':'')+'" d="M'+cx+','+cy+' Q'+mx.toFixed(1)+','+my.toFixed(1)+' '+x.toFixed(1)+','+y.toFixed(1)+'"/>'});
+ lastArc=key;
+ o+='<circle class="pc" cx="200" cy="205" r="30"/><text class="pn" x="200" y="203">Nanaji</text><text class="sub" x="200" y="218">'+esc(st.clock)+'</text>';
+ D.members.forEach(m=>{const [x,y]=pos[m.id],up=y<cy,hot=st.asked.includes(m.id)&&st.status!=='given',sk=st.skip[m.id];
+  o+='<g class="node'+(m.sim?' sim':'')+(hot?' hot':'')+(sk?' skip':'')+'"><title>'+esc(m.name)+', '+esc(m.rel)+', '+esc(m.local(st.clock))+' '+esc(m.city)+'</title><circle class="n" cx="'+x+'" cy="'+y+'" r="19"/><text class="ini" x="'+x+'" y="'+(y+5)+'">'+esc(m.name[0])+'</text>'
+   +'<text class="nm" x="'+x+'" y="'+(up?y-36:y+36)+'">'+esc(m.name)+'</text><text class="sub" x="'+x+'" y="'+(up?y-24:y+48)+'">'+esc(m.local(st.clock))+' '+esc(m.city)+'</text></g>'});
+ return o+'</svg>'}
+function draw(first){
+ $('clock').innerHTML='Thu 5 Nov · <b>'+esc(st.clock)+'</b> Kolkata (Nanaji)';
+ $('circle').innerHTML=circle();
+ const S=st.status,words={upcoming:'coming up at 8 PM',due:'due, not confirmed',overdue:'overdue, escalating',given:'given',stuck:'overdue, escalating'};
+ $('head').textContent=S==='given'?'All caught up':'Evening '+D.meds.join(' and ');
+ fill($('chip'),h('span',{class:'chip '+(S==='given'?'within':S==='upcoming'?'':'out')},words[S]));
+ fill($('doses'),D.meds.map(n=>h('div',{class:'dose'},h('span',{class:'dot '+(S==='given'?'given':S==='due'||S==='overdue'||S==='stuck'?S:'')},S==='given'?'M':''),
+   h('div',null,h('b',null,n),' · 8 PM',h('small',null,S==='given'?'given by Meena':words[S])))));
+ fill($('note'),st.note);
+ $('orgwrap').hidden=!st.org;if(st.org)orgGrid();
+}
+function orgGrid(){const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+ const g=[h('div'),...days.map(d=>h('div',{class:'h'},d))];
+ ['AM','PM'].forEach(p=>{g.push(h('div',{class:'h',style:'align-self:center'},p));
+  days.forEach((d,k)=>{const empty=k<3||(k===3&&p==='AM'),mis=k===3&&p==='PM';g.push(h('div',{class:'cell'+(empty?'':' full')+(mis?' mis':''),title:d+' '+p},empty?'empty':'full'))})});
+ fill($('org'),g)}
+function addLog(t,text){const li=h('li',{class:'new'},h('time',null,t),h('div',null,text));$('log').prepend(li)}
+function addMsg(m){const el=h('div',{class:'msg new'+(m.dir==='from'?' out':'')},
+  h('div',{class:'who'},h('b',null,m.dir==='from'?m.who+' (reply)':'To '+m.who),h('span',{class:'mut'},m.at),m.lang&&m.lang!=='en'?h('span',{class:'tag'},m.langName):null),
+  h('div',null,m.text),m.en&&m.lang!=='en'?h('div',{class:'en'},'English: '+m.en):null);
+ $('msgs').prepend(el)}
+// ----- playing -----
+function apply(e){
+ if(e.clock)st.clock=e.clock;
+ if(e.status)st.status=e.status;
+ if(e.ask&&!st.asked.includes(e.ask))st.asked.push(e.ask);
+ if(e.skip)st.skip[e.skip]=1;
+ if(e.org)st.org=true;
+ if(e.note!==undefined)st.note=e.note;
+ if(e.log)addLog(e.clock||st.clock,e.log);
+ (e.msgs||[]).forEach(addMsg);
+ draw()}
+function step(){
+ if(i>=seq.length){timer=null;finish();return}
+ const e=seq[i++];
+ if(e.choice){if(Q.get('auto')){choose(Q.get('auto'));return}$('choice').hidden=false;st.note='Meena has been nudged. What happens next is up to the family: pick one.';draw();timer=null;return}
+ apply(e);
+ timer=setTimeout(step,FAST?40:(e.wait||1700))}
+function finish(){$('again').hidden=false;$('bother').textContent=branch==='done'?'Try Ignore instead':'Try "Reply done" instead'}
+function choose(b){$('choice').hidden=true;branch=b;seq=D[b].slice();i=0;st.note='';timer=setTimeout(step,300)}
+$('bdone').onclick=()=>choose('done');$('bign').onclick=()=>choose('ignore');
+$('brestart').onclick=()=>{clearTimeout(timer);reset();timer=setTimeout(step,500)};
+$('bother').onclick=()=>{const other=branch==='done'?'ignore':'done';clearTimeout(timer);reset();
+ // replay the evening up to the nudge, then take the other branch
+ seq=D.common.filter(e=>!e.choice);i=0;const run=()=>{if(i>=seq.length){choose(other);return}apply(seq[i++]);timer=setTimeout(run,450)};run()};
+// ----- theme -----
+const SUN='<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',MOON='<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>';
+function isDark(){const t=document.documentElement.getAttribute('data-theme');return t?t==='dark':matchMedia('(prefers-color-scheme:dark)').matches}
+function themeIcon(){$('themeic').innerHTML=isDark()?SUN:MOON;$('theme').setAttribute('aria-label',isDark()?'Switch to light mode':'Switch to dark mode')}
+$('theme').onclick=()=>{const n=isDark()?'light':'dark';document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem('cc-theme',n)}catch(e){}themeIcon()};
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',themeIcon);themeIcon();
+// local clocks of the members for a given Kolkata time (computed from the data, no network)
+D.members.forEach(m=>{m.local=ist=>{const [hh,mm]=ist.split(':').map(Number);let t=hh*60+mm-330+m.utcOffsetMin;t=((t%1440)+1440)%1440;return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}});
+reset();timer=setTimeout(step,900);
+</script></body></html>

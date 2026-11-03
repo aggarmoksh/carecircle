@@ -313,6 +313,7 @@ function startLive(){
  try{es=new EventSource('/api/stream?token='+encodeURIComponent(TOKEN))}catch(e){startPoll();return}
  es.addEventListener('state',e=>{live=true;stopPoll();render(JSON.parse(e.data))});
  es.onerror=()=>{live=false;if(es){es.close();es=null}startPoll();setTimeout(startLive,10000)}}
+$('doc').href='/doctor?token='+encodeURIComponent(TOKEN);$('docic').innerHTML='<svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round">'+ICONS.doc+'</svg>';
 async function admin(body){const r=await fetch('/admin/clock',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Token':$('atok').value},body:JSON.stringify(body)});
  $('amsg').textContent=r.ok?'OK: '+JSON.stringify(await r.json()):'Refused ('+r.status+')';poll()}
 $('bset').onclick=()=>admin({time:$('atime').value});
