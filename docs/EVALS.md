@@ -21,7 +21,7 @@ Each answer key was written and committed before the code that is scored against
 | Escalation on real phones | each step fired on schedule (**60.0 s and 120.0 s ± 0.05 s**); delivered in 3.3 to 4.5 s | 4 trials, 7 sends |
 | Outbound guard | **0** medicine names, doses or lab values outside the record | every saved outgoing text, every phase (65 in the latest scan; 0 guard blocks in the final runs) |
 
-Also covered by 207 automated tests. Model API spend for building and testing everything: about $6.
+Also covered by 210 automated tests. Model API spend for building and testing everything: about $6.
 
 ## Failures, and the decision each one caused
 

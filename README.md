@@ -6,7 +6,7 @@ When someone we love is ill, the people who care for them are scattered: a grand
 
 **It coordinates. It never gives medical advice.**
 
-**[Watch the 3-minute demo](VIDEO_LINK)** · **[Try the interactive replay](https://aggarmoksh.github.io/carecircle/replay.html)** · [How it was tested](docs/EVALS.md) · [Architecture](docs/ARCHITECTURE.md)
+**[Watch the 3-minute demo](https://youtu.be/4g2Ha4-6-xU)** · **[Try the interactive replay](https://aggarmoksh.github.io/carecircle/replay.html)** · [How it was tested](docs/EVALS.md) · [Architecture](docs/ARCHITECTURE.md)
 
 ![The CareCircle board: The Circle shows each member by distance, with their local time and whether they're awake. The orange line is the live escalation path.](docs/img/board-desktop.png)
 
@@ -105,7 +105,7 @@ Each answer key was written and committed before the code that's scored against 
 | Escalation on real phones | each step fired on schedule (**60.0 s and 120.0 s ± 0.05 s**); delivered in 3.3 to 4.5 s | 4 trials, 7 sends |
 | Outbound guard | **0** medicine names, doses or lab values outside the record | every saved outgoing text, every phase (65 in the latest scan; 0 guard blocks in the final runs) |
 
-Also covered by 207 automated tests. Building and testing everything cost about $6 of Meta Model API usage.
+Also covered by 210 automated tests. Building and testing everything cost about $6 of Meta Model API usage.
 
 ## Try it
 
@@ -115,7 +115,7 @@ Also covered by 207 automated tests. Building and testing everything cost about 
 python -m venv .venv
 source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python -m pytest tests                 # 207 tests, no network needed
+python -m pytest tests                 # 210 tests, no network needed
 ```
 
 Then open `docs/replay.html` in any browser for the interactive replay, or run a demo scene in dry-run mode, which shows every message instead of sending it:
